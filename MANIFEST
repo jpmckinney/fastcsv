@@ -1,0 +1,7 @@
+MANIFEST
+README.ja
+ext/csvscan/MANIFEST
+ext/csvscan/csvscan.c
+ext/csvscan/csvscan.rl
+ext/csvscan/extconf.rb
+setup.rb

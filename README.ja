@@ -1,0 +1,33 @@
+CSVScan
+
+CSVScan はCSVを高速にパースするためのライブラリです。
+
+
+1. 必要環境
+
+  * ruby 1.8
+  * C コンパイラ
+
+
+2. インストール方法
+
+  コマンドラインで以下のように入力してください。
+  UNIX 系 OS ではおそらく root 権限が必要になります。
+
+    # ruby setup.rb
+
+3. 使い方
+
+    require "csvscan"   # ライブラリのロード
+    
+    open(ARGV.shift) {|io|
+      CSVScan.scan(io) {|row|
+        p row
+      }
+    }
+
+4. ライセンス
+
+  ライセンスはRubyのライセンスに従います。
+
+MoonWolf <moonwolf@moonwolf.com>
