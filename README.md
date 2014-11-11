@@ -20,6 +20,7 @@ end
     ragel -G2 ext/fastcsv/fastcsv.rl
     ragel -Vp ext/fastcsv/fastcsv.rl | dot -Tpng -o machine.png
     rake compile
+    gem uninstall fastcsv
     rake install
 
 ## Bugs? Questions?

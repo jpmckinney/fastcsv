@@ -1,10 +1,18 @@
 #include <ruby.h>
 #include <ruby/encoding.h>
-// https://github.com/ruby/ruby/blob/trunk/README.EXT
-// https://github.com/ruby/ruby/blob/trunk/encoding.c
-// https://github.com/ruby/ruby/blob/master/lib/csv.rb
+// CSV specifications.
 // http://tools.ietf.org/html/rfc4180
 // http://w3c.github.io/csvw/syntax/#ebnf
+
+// CSV implementation.
+// https://github.com/ruby/ruby/blob/master/lib/csv.rb
+
+// Ruby C extensions help.
+// https://github.com/ruby/ruby/blob/trunk/README.EXT
+// https://github.com/ruby/ruby/blob/trunk/encoding.c
+
+// Ragel help.
+// https://www.mail-archive.com/ragel-users@complang.org/
 
 static VALUE mModule, rb_eParseError;
 static ID s_read, s_to_str;
@@ -24,32 +32,28 @@ static ID s_read, s_to_str;
     unclosed_line = 0;
   }
 
-  action mark_start {
-    mark_aval = p;
-  }
-
   action read_unquoted {
-    if (p == mark_aval) {
+    if (p == ts) {
       // Unquoted empty fields are nil, not "", in Ruby.
-      aval = Qnil;
+      field = Qnil;
     }
-    else if (p > mark_aval) {
-      aval = rb_str_new(mark_aval, p - mark_aval);
-      rb_enc_associate_index(aval, encoding_index);
+    else if (p > ts) {
+      field = rb_str_new(ts, p - ts);
+      rb_enc_associate_index(field, encoding_index);
     }
   }
 
   action read_quoted {
-    if (p == mark_aval) {
-      aval = rb_str_new2("");
-      rb_enc_associate_index(aval, encoding_index);
+    if (p == ts) {
+      field = rb_str_new2("");
+      rb_enc_associate_index(field, encoding_index);
     }
-    else if (p > mark_aval) {
-      // Operating on mark_aval in-place produces odd behavior.
-      char *mark_copy = ALLOC_N(char, p - mark_aval);
-      memcpy(mark_copy, mark_aval, p - mark_aval);
+    else if (p > ts) {
+      // Operating on ts in-place produces odd behavior.
+      char *copy = ALLOC_N(char, p - ts);
+      memcpy(copy, ts, p - ts);
 
-      char *reader = mark_aval, *writer = mark_copy;
+      char *reader = ts, *writer = copy;
       int escaped = 0;
 
       while (p > reader) {
@@ -64,24 +68,24 @@ static ID s_read, s_to_str;
         reader++;
       }
 
-      aval = rb_str_new(mark_copy, writer - mark_copy);
-      rb_enc_associate_index(aval, encoding_index);
+      field = rb_str_new(copy, writer - copy);
+      rb_enc_associate_index(field, encoding_index);
 
-      if (mark_copy != NULL) {
-        free(mark_copy);
+      if (copy != NULL) {
+        free(copy);
       }
     }
   }
 
   action new_field {
-    rb_ary_push(row, aval);
-    aval = Qnil;
+    rb_ary_push(row, field);
+    field = Qnil;
   }
 
   action new_row {
-    if (!NIL_P(aval) || RARRAY_LEN(row)) { // same as new_field
-      rb_ary_push(row, aval);
-      aval = Qnil;
+    if (!NIL_P(field) || RARRAY_LEN(row)) { // same as new_field
+      rb_ary_push(row, field);
+      field = Qnil;
     }
 
     rb_yield(row);
@@ -91,17 +95,22 @@ static ID s_read, s_to_str;
   quote_char = '"';
   col_sep = ',' >new_field;
   row_sep = ('\r' '\n'? | '\n') @new_line;
-  unquoted = (any* -- quote_char -- col_sep -- row_sep) >mark_start %read_unquoted;
-  quoted = quote_char >open_quote (^quote_char | quote_char quote_char | row_sep)* >mark_start %read_quoted quote_char >close_quote;
+  unquoted = (any* -- quote_char -- col_sep -- row_sep) %read_unquoted;
+  quoted = quote_char >open_quote (^quote_char | quote_char quote_char | row_sep)* %read_quoted quote_char >close_quote;
   field = unquoted | quoted;
   fields = (field col_sep)* field?;
   file = (fields row_sep >new_row)* fields?;
 
   # @see Ragel Guide: 6.3 Scanners
-  # @todo Restore scanner.
+  # main := |*
+  #   field col_sep;
+  #   field row_sep >new_row;
+  # *|;
+
+  Non-scanner version requires very large buffer.
   main := file $/{
-    if (!NIL_P(aval) || RARRAY_LEN(row)) {
-      rb_ary_push(row, aval);
+    if (!NIL_P(field) || RARRAY_LEN(row)) {
+      rb_ary_push(row, field);
       rb_yield(row);
     }
   };
@@ -116,8 +125,7 @@ VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
   char *ts = 0, *te = 0, *buf = 0, *eof = 0;
 
   VALUE port, opts;
-  VALUE row = rb_ary_new(), aval = Qnil, bufsize = Qnil;
-  char *mark_aval = 0;
+  VALUE row = rb_ary_new(), field = Qnil, bufsize = Qnil;
   int done = 0, unclosed_line = 0, buffer_size = 0, taint = 0;
   int encoding_index = rb_enc_to_index(rb_default_external_encoding());
 
@@ -144,7 +152,8 @@ VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
     rb_raise(rb_eArgError, "options has to be a Hash or nil");
   }
 
-  // @todo Add machines for other common CSV formats?
+  // @note Add machines for common CSV dialects, or see if we can use "when"
+  // from Chapter 6 to compare the character to the host program's variable.
   // option = rb_hash_aref(opts, ID2SYM(rb_intern("quote_char")));
   // if (TYPE(option) == T_STRING && RSTRING_LEN(option) == 1) {
   //   quote_char = *StringValueCStr(option);
@@ -194,13 +203,12 @@ VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
   while (!done) {
     VALUE str;
     char *p, *pe;
-    int len, space = buffer_size - have, tokstart_diff, tokend_diff, mark_aval_diff;
+    int len, space = buffer_size - have, tokstart_diff, tokend_diff;
 
     if (io) {
       if (space == 0) {
          tokstart_diff = ts - buf;
          tokend_diff = te - buf;
-         mark_aval_diff = mark_aval - buf;
 
          buffer_size += BUFSIZE;
          REALLOC_N(buf, char, buffer_size);
@@ -209,7 +217,6 @@ VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
 
          ts = buf + tokstart_diff;
          te = buf + tokend_diff;
-         mark_aval = buf + mark_aval_diff;
       }
       p = buf + have;
 
@@ -239,7 +246,15 @@ VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
     }
     %% write exec;
 
-    if (cs < fastcsv_first_final) {
+    // @todo
+    // EOF actions don't work in Scanners. We'd need to add a sentinel value.
+    // @see http://www.complang.org/pipermail/ragel-users/2007-May/001516.html
+    // if (done && (!NIL_P(field) || RARRAY_LEN(row))) {
+    //   rb_ary_push(row, field);
+    //   rb_yield(row);
+    // }
+
+    if (done && cs < fastcsv_first_final) {
       if (buf != NULL) {
         free(buf);
       }
@@ -250,18 +265,11 @@ VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
       // a quoted string is followed by a string ("Unclosed quoted field on line
       // %d.") or by a string ending in a quote ("Missing or stray quote in line
       // %d"). These precisions are kind of bogus.
+      // @todo Try using $!.
       else {
         rb_raise(rb_eParseError, "Illegal quoting in line %d.", curline);
       }
     }
-
-    // @todo
-    // EOF actions don't work in scanners.
-    // @see http://www.complang.org/pipermail/ragel-users/2007-May/001516.html
-    // if (done && (!NIL_P(aval) || RARRAY_LEN(row))) {
-    //   rb_ary_push(row, aval);
-    //   rb_yield(row);
-    // }
 
     if (ts == 0) {
       have = 0;
@@ -269,9 +277,6 @@ VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
     else if (io) {
       have = pe - ts;
       memmove(buf, ts, have);
-      if (mark_aval > ts) {
-        mark_aval = buf + (mark_aval - ts);
-      }
       te = buf + (te - ts);
       ts = buf;
     }
