@@ -11,14 +11,14 @@
 
 // Ruby C extensions help.
 // https://github.com/ruby/ruby/blob/trunk/README.EXT
-// https://github.com/ruby/ruby/blob/trunk/encoding.c
+// http://rxr.whitequark.org/mri/source
 
 // Ragel help.
 // https://www.mail-archive.com/ragel-users@complang.org/
 
 # define ASSOCIATE_INDEX \
-  if (internal_encoding) { \
-    rb_enc_associate_index(field, rb_enc_to_index(internal_encoding)); \
+  if (internal_index) { \
+    rb_enc_associate_index(field, internal_index); \
     field = rb_str_encode(field, rb_enc_from_encoding(external_encoding), 0, Qnil); \
   } \
   else { \
@@ -29,66 +29,11 @@ static VALUE mModule, rb_eParseError;
 static ID s_read, s_to_str;
 
 
-#line 127 "ext/fastcsv/fastcsv.rl"
+#line 139 "ext/fastcsv/fastcsv.rl"
 
 
 
 #line 37 "ext/fastcsv/fastcsv.c"
-static const char _fastcsv_actions[] = {
-	0, 1, 0, 1, 1, 1, 7, 1, 
-	8, 1, 11, 2, 0, 10, 2, 4, 
-	2, 2, 5, 9, 2, 6, 0, 3, 
-	3, 5, 9, 3, 3, 6, 0, 3, 
-	6, 0, 10, 4, 3, 6, 0, 10
-	
-};
-
-static const char _fastcsv_key_offsets[] = {
-	0, 0, 4, 7, 11, 15
-};
-
-static const char _fastcsv_trans_keys[] = {
-	10, 13, 34, 44, 10, 13, 34, 10, 
-	13, 34, 44, 10, 13, 34, 44, 10, 
-	0
-};
-
-static const char _fastcsv_single_lengths[] = {
-	0, 4, 3, 4, 4, 1
-};
-
-static const char _fastcsv_range_lengths[] = {
-	0, 0, 0, 0, 0, 0
-};
-
-static const char _fastcsv_index_offsets[] = {
-	0, 0, 5, 9, 14, 19
-};
-
-static const char _fastcsv_trans_targs[] = {
-	4, 5, 0, 4, 1, 2, 2, 3, 
-	2, 4, 5, 2, 4, 0, 4, 5, 
-	2, 4, 1, 4, 4, 4, 0
-};
-
-static const char _fastcsv_trans_actions[] = {
-	35, 27, 0, 23, 0, 1, 1, 14, 
-	0, 31, 20, 0, 17, 0, 35, 27, 
-	3, 23, 0, 11, 9, 9, 0
-};
-
-static const char _fastcsv_to_state_actions[] = {
-	0, 0, 0, 0, 5, 0
-};
-
-static const char _fastcsv_from_state_actions[] = {
-	0, 0, 0, 0, 7, 0
-};
-
-static const char _fastcsv_eof_trans[] = {
-	0, 0, 0, 0, 0, 22
-};
-
 static const int fastcsv_start = 4;
 static const int fastcsv_first_final = 4;
 static const int fastcsv_error = 0;
@@ -96,7 +41,7 @@ static const int fastcsv_error = 0;
 static const int fastcsv_en_main = 4;
 
 
-#line 130 "ext/fastcsv/fastcsv.rl"
+#line 142 "ext/fastcsv/fastcsv.rl"
 
 #define BUFSIZE 16384
 
@@ -108,10 +53,10 @@ VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
   VALUE row = rb_ary_new(), field = Qnil, bufsize = Qnil;
   int done = 0, unclosed_line = 0, buffer_size = 0, taint = 0;
   int internal_index = 0, external_index = rb_enc_to_index(rb_default_external_encoding());
-  rb_encoding *internal_encoding = NULL, *external_encoding = rb_default_external_encoding();
+  rb_encoding *external_encoding = rb_default_external_encoding();
 
   VALUE option;
-  char quote_char = '"', *col_sep = ",", *row_sep = "\r\n";
+  char quote_char = '"'; //, *col_sep = ",", *row_sep = "\r\n";
 
   rb_scan_args(argc, argv, "11", &port, &opts);
   taint = OBJ_TAINTED(port);
@@ -182,10 +127,7 @@ VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
       internal_index = rb_enc_find_index(string);
     }
 
-    if (internal_index >= 0) {
-      internal_encoding = rb_enc_from_index(internal_index);
-    }
-    else if (internal_index != -2) {
+    if (internal_index < 0 && internal_index != -2) {
       unsupported_encoding(string);
     }
 
@@ -216,7 +158,7 @@ VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
   }
 
   
-#line 220 "ext/fastcsv/fastcsv.c"
+#line 162 "ext/fastcsv/fastcsv.c"
 	{
 	cs = fastcsv_start;
 	ts = 0;
@@ -224,7 +166,7 @@ VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
 	act = 0;
 	}
 
-#line 249 "ext/fastcsv/fastcsv.rl"
+#line 258 "ext/fastcsv/fastcsv.rl"
 
   while (!done) {
     VALUE str;
@@ -257,125 +199,129 @@ VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
       }
 
       if (len < space) {
+        // EOF actions don't work in scanners, so we add a sentinel value.
+        // @see http://www.complang.org/pipermail/ragel-users/2007-May/001516.html
+        // @see https://github.com/leeonix/lua-csv-ragel/blob/master/src/csv.rl
+        p[len++] = 0;
         done = 1;
       }
     }
     else {
       p = RSTRING_PTR(port);
       len = RSTRING_LEN(port);
+      p[len++] = 0;
       done = 1;
     }
 
     pe = p + len;
-    if (done) {
-      eof = pe;
-    }
+    // if (done) {
+    //   // This triggers the eof action in the non-scanner version.
+    //   eof = pe;
+    // }
     
-#line 275 "ext/fastcsv/fastcsv.c"
+#line 223 "ext/fastcsv/fastcsv.c"
 	{
-	int _klen;
-	unsigned int _trans;
-	const char *_acts;
-	unsigned int _nacts;
-	const char *_keys;
-
 	if ( p == pe )
 		goto _test_eof;
-	if ( cs == 0 )
-		goto _out;
-_resume:
-	_acts = _fastcsv_actions + _fastcsv_from_state_actions[cs];
-	_nacts = (unsigned int) *_acts++;
-	while ( _nacts-- > 0 ) {
-		switch ( *_acts++ ) {
-	case 8:
+	switch ( cs )
+	{
+tr0:
+#line 1 "NONE"
+	{	switch( act ) {
+	case 0:
+	{{goto st0;}}
+	break;
+	default:
+	{{p = ((te))-1;}}
+	break;
+	}
+	}
+	goto st4;
+tr10:
+#line 105 "ext/fastcsv/fastcsv.rl"
+	{
+    if (!NIL_P(field) || RARRAY_LEN(row)) {
+      rb_ary_push(row, field);
+    }
+    if (RARRAY_LEN(row)) {
+      rb_yield(row);
+    }
+  }
+#line 129 "ext/fastcsv/fastcsv.rl"
+	{te = p+1;}
+	goto st4;
+tr16:
+#line 129 "ext/fastcsv/fastcsv.rl"
+	{te = p;p--;}
+	goto st4;
+tr17:
+#line 128 "ext/fastcsv/fastcsv.rl"
+	{te = p;p--;}
+	goto st4;
+tr18:
+#line 105 "ext/fastcsv/fastcsv.rl"
+	{
+    if (!NIL_P(field) || RARRAY_LEN(row)) {
+      rb_ary_push(row, field);
+    }
+    if (RARRAY_LEN(row)) {
+      rb_yield(row);
+    }
+  }
+#line 128 "ext/fastcsv/fastcsv.rl"
+	{te = p+1;}
+	goto st4;
+tr20:
+#line 127 "ext/fastcsv/fastcsv.rl"
+	{te = p;p--;}
+	goto st4;
+tr21:
+#line 105 "ext/fastcsv/fastcsv.rl"
+	{
+    if (!NIL_P(field) || RARRAY_LEN(row)) {
+      rb_ary_push(row, field);
+    }
+    if (RARRAY_LEN(row)) {
+      rb_yield(row);
+    }
+  }
+#line 127 "ext/fastcsv/fastcsv.rl"
+	{te = p+1;}
+	goto st4;
+st4:
+#line 1 "NONE"
+	{ts = 0;}
+#line 1 "NONE"
+	{act = 0;}
+	if ( ++p == pe )
+		goto _test_eof4;
+case 4:
 #line 1 "NONE"
 	{ts = p;}
-	break;
-#line 296 "ext/fastcsv/fastcsv.c"
-		}
+#line 302 "ext/fastcsv/fastcsv.c"
+	switch( (*p) ) {
+		case 0: goto tr14;
+		case 10: goto tr3;
+		case 13: goto tr4;
+		case 34: goto tr15;
+		case 44: goto tr5;
 	}
-
-	_keys = _fastcsv_trans_keys + _fastcsv_key_offsets[cs];
-	_trans = _fastcsv_index_offsets[cs];
-
-	_klen = _fastcsv_single_lengths[cs];
-	if ( _klen > 0 ) {
-		const char *_lower = _keys;
-		const char *_mid;
-		const char *_upper = _keys + _klen - 1;
-		while (1) {
-			if ( _upper < _lower )
-				break;
-
-			_mid = _lower + ((_upper-_lower) >> 1);
-			if ( (*p) < *_mid )
-				_upper = _mid - 1;
-			else if ( (*p) > *_mid )
-				_lower = _mid + 1;
-			else {
-				_trans += (unsigned int)(_mid - _keys);
-				goto _match;
-			}
-		}
-		_keys += _klen;
-		_trans += _klen;
+	goto st1;
+st1:
+	if ( ++p == pe )
+		goto _test_eof1;
+case 1:
+	switch( (*p) ) {
+		case 0: goto tr2;
+		case 10: goto tr3;
+		case 13: goto tr4;
+		case 34: goto tr0;
+		case 44: goto tr5;
 	}
-
-	_klen = _fastcsv_range_lengths[cs];
-	if ( _klen > 0 ) {
-		const char *_lower = _keys;
-		const char *_mid;
-		const char *_upper = _keys + (_klen<<1) - 2;
-		while (1) {
-			if ( _upper < _lower )
-				break;
-
-			_mid = _lower + (((_upper-_lower) >> 1) & ~1);
-			if ( (*p) < _mid[0] )
-				_upper = _mid - 2;
-			else if ( (*p) > _mid[1] )
-				_lower = _mid + 2;
-			else {
-				_trans += (unsigned int)((_mid - _keys)>>1);
-				goto _match;
-			}
-		}
-		_trans += _klen;
-	}
-
-_match:
-_eof_trans:
-	cs = _fastcsv_trans_targs[_trans];
-
-	if ( _fastcsv_trans_actions[_trans] == 0 )
-		goto _again;
-
-	_acts = _fastcsv_actions + _fastcsv_trans_actions[_trans];
-	_nacts = (unsigned int) *_acts++;
-	while ( _nacts-- > 0 )
-	{
-		switch ( *_acts++ )
-		{
-	case 0:
-#line 32 "ext/fastcsv/fastcsv.rl"
-	{
-    curline++;
-  }
-	break;
-	case 1:
-#line 36 "ext/fastcsv/fastcsv.rl"
-	{
-    unclosed_line = curline;
-  }
-	break;
-	case 2:
-#line 40 "ext/fastcsv/fastcsv.rl"
-	{
-    unclosed_line = 0;
-  }
-	break;
-	case 3:
+	goto st1;
+tr2:
+#line 1 "NONE"
+	{te = p+1;}
 #line 44 "ext/fastcsv/fastcsv.rl"
 	{
     if (p == ts) {
@@ -387,14 +333,247 @@ _eof_trans:
       ASSOCIATE_INDEX;
     }
   }
-	break;
-	case 4:
+#line 105 "ext/fastcsv/fastcsv.rl"
+	{
+    if (!NIL_P(field) || RARRAY_LEN(row)) {
+      rb_ary_push(row, field);
+    }
+    if (RARRAY_LEN(row)) {
+      rb_yield(row);
+    }
+  }
+#line 129 "ext/fastcsv/fastcsv.rl"
+	{act = 3;}
+	goto st5;
+st5:
+	if ( ++p == pe )
+		goto _test_eof5;
+case 5:
+#line 353 "ext/fastcsv/fastcsv.c"
+	switch( (*p) ) {
+		case 0: goto tr2;
+		case 10: goto tr3;
+		case 13: goto tr4;
+		case 34: goto tr16;
+		case 44: goto tr5;
+	}
+	goto st1;
+tr3:
+#line 44 "ext/fastcsv/fastcsv.rl"
+	{
+    if (p == ts) {
+      // Unquoted empty fields are nil, not "", in Ruby.
+      field = Qnil;
+    }
+    else if (p > ts) {
+      field = rb_str_new(ts, p - ts);
+      ASSOCIATE_INDEX;
+    }
+  }
+#line 95 "ext/fastcsv/fastcsv.rl"
+	{
+    if (!NIL_P(field) || RARRAY_LEN(row)) { // same as new_field
+      rb_ary_push(row, field);
+      field = Qnil;
+    }
+
+    rb_yield(row);
+    row = rb_ary_new();
+  }
+#line 32 "ext/fastcsv/fastcsv.rl"
+	{
+    curline++;
+  }
+	goto st6;
+tr19:
+#line 32 "ext/fastcsv/fastcsv.rl"
+	{
+    curline++;
+  }
+	goto st6;
+tr11:
+#line 95 "ext/fastcsv/fastcsv.rl"
+	{
+    if (!NIL_P(field) || RARRAY_LEN(row)) { // same as new_field
+      rb_ary_push(row, field);
+      field = Qnil;
+    }
+
+    rb_yield(row);
+    row = rb_ary_new();
+  }
+#line 32 "ext/fastcsv/fastcsv.rl"
+	{
+    curline++;
+  }
+	goto st6;
+st6:
+	if ( ++p == pe )
+		goto _test_eof6;
+case 6:
+#line 415 "ext/fastcsv/fastcsv.c"
+	if ( (*p) == 0 )
+		goto tr18;
+	goto tr17;
+tr4:
+#line 44 "ext/fastcsv/fastcsv.rl"
+	{
+    if (p == ts) {
+      // Unquoted empty fields are nil, not "", in Ruby.
+      field = Qnil;
+    }
+    else if (p > ts) {
+      field = rb_str_new(ts, p - ts);
+      ASSOCIATE_INDEX;
+    }
+  }
+#line 95 "ext/fastcsv/fastcsv.rl"
+	{
+    if (!NIL_P(field) || RARRAY_LEN(row)) { // same as new_field
+      rb_ary_push(row, field);
+      field = Qnil;
+    }
+
+    rb_yield(row);
+    row = rb_ary_new();
+  }
+#line 32 "ext/fastcsv/fastcsv.rl"
+	{
+    curline++;
+  }
+	goto st7;
+tr12:
+#line 95 "ext/fastcsv/fastcsv.rl"
+	{
+    if (!NIL_P(field) || RARRAY_LEN(row)) { // same as new_field
+      rb_ary_push(row, field);
+      field = Qnil;
+    }
+
+    rb_yield(row);
+    row = rb_ary_new();
+  }
+#line 32 "ext/fastcsv/fastcsv.rl"
+	{
+    curline++;
+  }
+	goto st7;
+st7:
+	if ( ++p == pe )
+		goto _test_eof7;
+case 7:
+#line 466 "ext/fastcsv/fastcsv.c"
+	switch( (*p) ) {
+		case 0: goto tr18;
+		case 10: goto tr19;
+	}
+	goto tr17;
+tr5:
+#line 44 "ext/fastcsv/fastcsv.rl"
+	{
+    if (p == ts) {
+      // Unquoted empty fields are nil, not "", in Ruby.
+      field = Qnil;
+    }
+    else if (p > ts) {
+      field = rb_str_new(ts, p - ts);
+      ASSOCIATE_INDEX;
+    }
+  }
+#line 90 "ext/fastcsv/fastcsv.rl"
+	{
+    rb_ary_push(row, field);
+    field = Qnil;
+  }
+	goto st8;
+tr13:
+#line 90 "ext/fastcsv/fastcsv.rl"
+	{
+    rb_ary_push(row, field);
+    field = Qnil;
+  }
+	goto st8;
+st8:
+	if ( ++p == pe )
+		goto _test_eof8;
+case 8:
+#line 501 "ext/fastcsv/fastcsv.c"
+	if ( (*p) == 0 )
+		goto tr21;
+	goto tr20;
+tr14:
+#line 1 "NONE"
+	{te = p+1;}
+#line 105 "ext/fastcsv/fastcsv.rl"
+	{
+    if (!NIL_P(field) || RARRAY_LEN(row)) {
+      rb_ary_push(row, field);
+    }
+    if (RARRAY_LEN(row)) {
+      rb_yield(row);
+    }
+  }
+#line 44 "ext/fastcsv/fastcsv.rl"
+	{
+    if (p == ts) {
+      // Unquoted empty fields are nil, not "", in Ruby.
+      field = Qnil;
+    }
+    else if (p > ts) {
+      field = rb_str_new(ts, p - ts);
+      ASSOCIATE_INDEX;
+    }
+  }
+#line 129 "ext/fastcsv/fastcsv.rl"
+	{act = 3;}
+	goto st9;
+st9:
+	if ( ++p == pe )
+		goto _test_eof9;
+case 9:
+#line 535 "ext/fastcsv/fastcsv.c"
+	switch( (*p) ) {
+		case 10: goto tr16;
+		case 13: goto tr16;
+		case 34: goto tr16;
+		case 44: goto tr16;
+	}
+	goto st1;
+tr8:
+#line 32 "ext/fastcsv/fastcsv.rl"
+	{
+    curline++;
+  }
+	goto st2;
+tr15:
+#line 36 "ext/fastcsv/fastcsv.rl"
+	{
+    unclosed_line = curline;
+  }
+	goto st2;
+st2:
+	if ( ++p == pe )
+		goto _test_eof2;
+case 2:
+#line 559 "ext/fastcsv/fastcsv.c"
+	switch( (*p) ) {
+		case 0: goto st0;
+		case 10: goto tr8;
+		case 13: goto tr8;
+		case 34: goto tr9;
+	}
+	goto st2;
+st0:
+cs = 0;
+	goto _out;
+tr9:
 #line 55 "ext/fastcsv/fastcsv.rl"
 	{
     if (p == ts) {
       field = rb_str_new2("");
       ASSOCIATE_INDEX;
     }
+    // @note If we add an action on '""', we can skip some steps if no '""' is found.
     else if (p > ts) {
       // Operating on ts in-place produces odd behavior, FYI.
       char *copy = ALLOC_N(char, p - ts);
@@ -423,80 +602,52 @@ _eof_trans:
       }
     }
   }
-	break;
-	case 5:
-#line 89 "ext/fastcsv/fastcsv.rl"
+#line 40 "ext/fastcsv/fastcsv.rl"
 	{
-    rb_ary_push(row, field);
-    field = Qnil;
+    unclosed_line = 0;
   }
-	break;
-	case 6:
-#line 94 "ext/fastcsv/fastcsv.rl"
-	{
-    if (!NIL_P(field) || RARRAY_LEN(row)) { // same as new_field
-      rb_ary_push(row, field);
-      field = Qnil;
-    }
-
-    rb_yield(row);
-    row = rb_ary_new();
-  }
-	break;
-	case 9:
-#line 116 "ext/fastcsv/fastcsv.rl"
-	{te = p+1;}
-	break;
-	case 10:
-#line 117 "ext/fastcsv/fastcsv.rl"
-	{te = p+1;}
-	break;
-	case 11:
-#line 117 "ext/fastcsv/fastcsv.rl"
-	{te = p;p--;}
-	break;
-#line 459 "ext/fastcsv/fastcsv.c"
-		}
+	goto st3;
+st3:
+	if ( ++p == pe )
+		goto _test_eof3;
+case 3:
+#line 615 "ext/fastcsv/fastcsv.c"
+	switch( (*p) ) {
+		case 0: goto tr10;
+		case 10: goto tr11;
+		case 13: goto tr12;
+		case 34: goto st2;
+		case 44: goto tr13;
 	}
-
-_again:
-	_acts = _fastcsv_actions + _fastcsv_to_state_actions[cs];
-	_nacts = (unsigned int) *_acts++;
-	while ( _nacts-- > 0 ) {
-		switch ( *_acts++ ) {
-	case 7:
-#line 1 "NONE"
-	{ts = 0;}
-	break;
-#line 472 "ext/fastcsv/fastcsv.c"
-		}
+	goto st0;
 	}
+	_test_eof4: cs = 4; goto _test_eof; 
+	_test_eof1: cs = 1; goto _test_eof; 
+	_test_eof5: cs = 5; goto _test_eof; 
+	_test_eof6: cs = 6; goto _test_eof; 
+	_test_eof7: cs = 7; goto _test_eof; 
+	_test_eof8: cs = 8; goto _test_eof; 
+	_test_eof9: cs = 9; goto _test_eof; 
+	_test_eof2: cs = 2; goto _test_eof; 
+	_test_eof3: cs = 3; goto _test_eof; 
 
-	if ( cs == 0 )
-		goto _out;
-	if ( ++p != pe )
-		goto _resume;
 	_test_eof: {}
 	if ( p == eof )
 	{
-	if ( _fastcsv_eof_trans[cs] > 0 ) {
-		_trans = _fastcsv_eof_trans[cs] - 1;
-		goto _eof_trans;
+	switch ( cs ) {
+	case 1: goto tr0;
+	case 5: goto tr16;
+	case 6: goto tr17;
+	case 7: goto tr17;
+	case 8: goto tr20;
+	case 9: goto tr16;
 	}
 	}
 
 	_out: {}
 	}
 
-#line 295 "ext/fastcsv/fastcsv.rl"
-
-    // @todo Use \0 as a sentinel value as in Lua CSV Ragel?
-    // EOF actions don't work in Scanners. We'd need to add a sentinel value.
-    // @see http://www.complang.org/pipermail/ragel-users/2007-May/001516.html
-    // if (done && (!NIL_P(field) || RARRAY_LEN(row))) {
-    //   rb_ary_push(row, field);
-    //   rb_yield(row);
-    // }
+#line 310 "ext/fastcsv/fastcsv.rl"
 
     if (done && cs < fastcsv_first_final) {
       if (buf != NULL) {
@@ -508,8 +659,7 @@ _again:
       // Ruby raises different errors for illegal quoting, depending on whether
       // a quoted string is followed by a string ("Unclosed quoted field on line
       // %d.") or by a string ending in a quote ("Missing or stray quote in line
-      // %d"). These precisions are kind of bogus.
-      // @todo Try using $!.
+      // %d"). These precisions are kind of bogus, but we can try using $!.
       else {
         rb_raise(rb_eParseError, "Illegal quoting in line %d.", curline);
       }

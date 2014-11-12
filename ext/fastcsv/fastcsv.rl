@@ -9,14 +9,14 @@
 
 // Ruby C extensions help.
 // https://github.com/ruby/ruby/blob/trunk/README.EXT
-// https://github.com/ruby/ruby/blob/trunk/encoding.c
+// http://rxr.whitequark.org/mri/source
 
 // Ragel help.
 // https://www.mail-archive.com/ragel-users@complang.org/
 
 # define ASSOCIATE_INDEX \
-  if (internal_encoding) { \
-    rb_enc_associate_index(field, rb_enc_to_index(internal_encoding)); \
+  if (internal_index) { \
+    rb_enc_associate_index(field, internal_index); \
     field = rb_str_encode(field, rb_enc_from_encoding(external_encoding), 0, Qnil); \
   } \
   else { \
@@ -57,6 +57,7 @@ static ID s_read, s_to_str;
       field = rb_str_new2("");
       ASSOCIATE_INDEX;
     }
+    // @note If we add an action on '""', we can skip some steps if no '""' is found.
     else if (p > ts) {
       // Operating on ts in-place produces odd behavior, FYI.
       char *copy = ALLOC_N(char, p - ts);
@@ -101,11 +102,21 @@ static ID s_read, s_to_str;
     row = rb_ary_new();
   }
 
+  action last_row {
+    if (!NIL_P(field) || RARRAY_LEN(row)) {
+      rb_ary_push(row, field);
+    }
+    if (RARRAY_LEN(row)) {
+      rb_yield(row);
+    }
+  }
+
+  EOF = 0 >last_row;
   quote_char = '"';
   col_sep = ',' >new_field;
   row_sep = ('\r' '\n'? | '\n') @new_line;
-  unquoted = (any* -- quote_char -- col_sep -- row_sep) %read_unquoted;
-  quoted = quote_char >open_quote (^quote_char | quote_char quote_char | row_sep)* %read_quoted quote_char >close_quote;
+  unquoted = (any* -- quote_char -- col_sep -- row_sep - EOF) %read_unquoted;
+  quoted = quote_char >open_quote (any - quote_char - EOF | quote_char quote_char | row_sep)* %read_quoted quote_char >close_quote;
   field = unquoted | quoted;
   # fields = (field col_sep)* field?;
   # file = (fields row_sep >new_row)* fields?;
@@ -113,8 +124,9 @@ static ID s_read, s_to_str;
   # @see Ragel Guide: 6.3 Scanners
   # Remember that an unquoted field can be zero-length.
   main := |*
-    field col_sep;
-    field row_sep >new_row;
+    field col_sep EOF?;
+    field row_sep >new_row EOF?;
+    field EOF;
   *|;
 
   # Non-scanner version requires very large buffer.
@@ -138,10 +150,10 @@ VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
   VALUE row = rb_ary_new(), field = Qnil, bufsize = Qnil;
   int done = 0, unclosed_line = 0, buffer_size = 0, taint = 0;
   int internal_index = 0, external_index = rb_enc_to_index(rb_default_external_encoding());
-  rb_encoding *internal_encoding = NULL, *external_encoding = rb_default_external_encoding();
+  rb_encoding *external_encoding = rb_default_external_encoding();
 
   VALUE option;
-  char quote_char = '"', *col_sep = ",", *row_sep = "\r\n";
+  char quote_char = '"'; //, *col_sep = ",", *row_sep = "\r\n";
 
   rb_scan_args(argc, argv, "11", &port, &opts);
   taint = OBJ_TAINTED(port);
@@ -212,10 +224,7 @@ VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
       internal_index = rb_enc_find_index(string);
     }
 
-    if (internal_index >= 0) {
-      internal_encoding = rb_enc_from_index(internal_index);
-    }
-    else if (internal_index != -2) {
+    if (internal_index < 0 && internal_index != -2) {
       unsupported_encoding(string);
     }
 
@@ -278,28 +287,26 @@ VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
       }
 
       if (len < space) {
+        // EOF actions don't work in scanners, so we add a sentinel value.
+        // @see http://www.complang.org/pipermail/ragel-users/2007-May/001516.html
+        // @see https://github.com/leeonix/lua-csv-ragel/blob/master/src/csv.rl
+        p[len++] = 0;
         done = 1;
       }
     }
     else {
       p = RSTRING_PTR(port);
       len = RSTRING_LEN(port);
+      p[len++] = 0;
       done = 1;
     }
 
     pe = p + len;
-    if (done) {
-      eof = pe;
-    }
-    %% write exec;
-
-    // @todo Use \0 as a sentinel value as in Lua CSV Ragel?
-    // EOF actions don't work in Scanners. We'd need to add a sentinel value.
-    // @see http://www.complang.org/pipermail/ragel-users/2007-May/001516.html
-    // if (done && (!NIL_P(field) || RARRAY_LEN(row))) {
-    //   rb_ary_push(row, field);
-    //   rb_yield(row);
+    // if (done) {
+    //   // This triggers the eof action in the non-scanner version.
+    //   eof = pe;
     // }
+    %% write exec;
 
     if (done && cs < fastcsv_first_final) {
       if (buf != NULL) {
@@ -311,8 +318,7 @@ VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
       // Ruby raises different errors for illegal quoting, depending on whether
       // a quoted string is followed by a string ("Unclosed quoted field on line
       // %d.") or by a string ending in a quote ("Missing or stray quote in line
-      // %d"). These precisions are kind of bogus.
-      // @todo Try using $!.
+      // %d"). These precisions are kind of bogus, but we can try using $!.
       else {
         rb_raise(rb_eParseError, "Illegal quoting in line %d.", curline);
       }
