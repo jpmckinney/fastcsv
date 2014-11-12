@@ -157,6 +157,44 @@ RSpec.shared_examples 'a CSV parser' do
   end
 end
 
+RSpec.shared_examples 'with encoded strings' do
+  def parse_with_encoding(basename, encoding)
+    filename = File.expand_path(File.join('..', 'fixtures', basename), __FILE__)
+    options = {encoding: encoding}
+    File.open(filename) do |io|
+      rows = []
+      FastCSV.raw_parse(io, options){|row| rows << row}
+      expected = CSV.read(filename, options)
+      expect(rows[0][0].encoding).to eq(expected[0][0].encoding)
+      expect(rows).to eq(expected)
+    end
+  end
+
+  it 'should encode' do
+    parse_with_encoding("iso-8859-1#{suffix}.csv", 'iso-8859-1')
+  end
+
+  it 'should transcode' do
+    parse_with_encoding("iso-8859-1#{suffix}.csv", 'iso-8859-1:utf-8')
+  end
+
+  it 'should recover from blank external encoding' do
+    parse_with_encoding("utf-8#{suffix}.csv", ':utf-8')
+  end
+
+  it 'should recover from invalid internal encoding' do
+    parse_with_encoding("utf-8#{suffix}.csv", 'invalid')
+  end
+
+  it 'should recover from invalid external encoding' do
+    parse_with_encoding("utf-8#{suffix}.csv", 'invalid:-')
+  end
+
+  it 'should recover from invalid encodings' do
+    parse_with_encoding("utf-8#{suffix}.csv", 'invalid:invalid')
+  end
+end
+
 RSpec.describe FastCSV do
   context "with String" do
     def parse(csv, options = nil)
@@ -198,42 +236,20 @@ RSpec.describe FastCSV do
     end
   end
 
-  context 'with encoded strings' do
-    def parse_with_encoding(basename, encoding)
-      filename = File.expand_path(File.join('..', 'fixtures', basename), __FILE__)
-      options = {encoding: encoding}
-      File.open(filename) do |io|
-        rows = []
-        FastCSV.raw_parse(io, options){|row| rows << row}
-        expected = CSV.read(filename, options)
-        expect(rows[0][0].encoding).to eq(expected[0][0].encoding)
-        expect(rows).to eq(expected)
-      end
+  context 'with encoded unquoted fields' do
+    def suffix
+      ''
     end
 
-    it 'should encode' do
-      parse_with_encoding('iso-8859-1.csv', 'iso-8859-1')
+    include_examples 'with encoded strings'
+  end
+
+  context 'with encoded quoted fields' do
+    def suffix
+      '-quoted'
     end
 
-    it 'should transcode' do
-      parse_with_encoding('iso-8859-1.csv', 'iso-8859-1:utf-8')
-    end
-
-    it 'should recover from blank external encoding' do
-      parse_with_encoding('utf-8.csv', ':utf-8')
-    end
-
-    it 'should recover from invalid internal encoding' do
-      parse_with_encoding('utf-8.csv', 'invalid')
-    end
-
-    it 'should recover from invalid external encoding' do
-      parse_with_encoding('utf-8.csv', 'invalid:-')
-    end
-
-    it 'should recover from invalid encodings' do
-      parse_with_encoding('utf-8.csv', 'invalid:invalid')
-    end
+    include_examples 'with encoded strings'
   end
 
   context 'when initializing' do

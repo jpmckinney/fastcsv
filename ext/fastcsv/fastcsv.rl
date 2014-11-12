@@ -74,7 +74,7 @@ static ID s_read, s_to_str, s_internal_encoding, s_external_encoding, s_string, 
         reader++;
       }
 
-      field = rb_enc_str_new(copy, writer - copy, enc);
+      field = rb_enc_str_new(copy, writer - copy, encoding);
       ENCODE;
 
       if (copy != NULL) {
@@ -199,7 +199,7 @@ VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
   // @see http://ruby-doc.org/core-2.1.1/IO.html#method-c-new-label-Open+Mode
   option = rb_hash_aref(opts, ID2SYM(rb_intern("encoding")));
   if (TYPE(option) == T_STRING) {
-    // parse_mode_enc is not in header file.
+    // `parse_mode_enc` is not in header file.
     const char *estr = StringValueCStr(option), *ptr;
     char encname[ENCODING_MAXNAMELEN+1];
     int idx, idx2;
@@ -210,17 +210,17 @@ VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
     ptr = strrchr(estr, ':');
     if (ptr) {
       long len = (ptr++) - estr;
-      if (len == 0 || len > ENCODING_MAXNAMELEN) {
+      if (len == 0 || len > ENCODING_MAXNAMELEN) { // ":enc"
         idx = -1;
       }
-      else {
+      else { // "enc2:enc" or "enc:-"
         memcpy(encname, estr, len);
         encname[len] = '\0';
         estr = encname;
         idx = rb_enc_find_index(encname);
       }
     }
-    else {
+    else { // "enc"
       idx = rb_enc_find_index(estr);
     }
 
@@ -228,7 +228,7 @@ VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
       ext_enc = rb_enc_from_index(idx);
     }
     else {
-      if (idx != -2) {
+      if (idx != -2) { // ":enc"
         // `unsupported_encoding` is not in header file.
         rb_warn("Unsupported encoding %s ignored", estr);
       }
@@ -237,11 +237,11 @@ VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
 
     int_enc = NULL;
     if (ptr) {
-      if (*ptr == '-' && *(ptr+1) == '\0') {
+      if (*ptr == '-' && *(ptr+1) == '\0') { // "enc:-"
         /* Special case - "-" => no transcoding */
         int_enc = (rb_encoding *)Qnil;
       }
-      else {
+      else { // "enc2:enc"
         idx2 = rb_enc_find_index(ptr);
         if (idx2 < 0) {
           // `unsupported_encoding` is not in header file.
@@ -262,8 +262,8 @@ VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
     rb_raise(rb_eArgError, ":encoding has to be a String");
   }
 
+  // @see CSV#raw_encoding
   // @see https://github.com/ruby/ruby/blob/70510d026f8d86693dccaba07417488eed09b41d/lib/csv.rb#L1567
-  // @see https://github.com/ruby/ruby/blob/70510d026f8d86693dccaba07417488eed09b41d/lib/csv.rb#L2300
   if (rb_respond_to(port, s_internal_encoding)) {
     r_encoding = rb_funcall(port, s_internal_encoding, 0);
     if (NIL_P(r_encoding)) {
@@ -279,12 +279,16 @@ VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
   else {
     r_encoding = rb_enc_from_encoding(rb_ascii8bit_encoding());
   }
+
+  // @see CSV#initialize
+  // @see https://github.com/ruby/ruby/blob/70510d026f8d86693dccaba07417488eed09b41d/lib/csv.rb#L2300
   if (NIL_P(r_encoding)) {
     r_encoding = rb_enc_from_encoding(rb_default_internal_encoding());
   }
   if (NIL_P(r_encoding)) {
     r_encoding = rb_enc_from_encoding(rb_default_external_encoding());
   }
+
   if (enc2 != NULL) {
     encoding = enc2;
   }

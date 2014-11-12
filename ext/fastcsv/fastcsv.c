@@ -112,7 +112,7 @@ VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
   // @see http://ruby-doc.org/core-2.1.1/IO.html#method-c-new-label-Open+Mode
   option = rb_hash_aref(opts, ID2SYM(rb_intern("encoding")));
   if (TYPE(option) == T_STRING) {
-    // parse_mode_enc is not in header file.
+    // `parse_mode_enc` is not in header file.
     const char *estr = StringValueCStr(option), *ptr;
     char encname[ENCODING_MAXNAMELEN+1];
     int idx, idx2;
@@ -123,17 +123,17 @@ VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
     ptr = strrchr(estr, ':');
     if (ptr) {
       long len = (ptr++) - estr;
-      if (len == 0 || len > ENCODING_MAXNAMELEN) {
+      if (len == 0 || len > ENCODING_MAXNAMELEN) { // ":enc"
         idx = -1;
       }
-      else {
+      else { // "enc2:enc" or "enc:-"
         memcpy(encname, estr, len);
         encname[len] = '\0';
         estr = encname;
         idx = rb_enc_find_index(encname);
       }
     }
-    else {
+    else { // "enc"
       idx = rb_enc_find_index(estr);
     }
 
@@ -141,7 +141,7 @@ VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
       ext_enc = rb_enc_from_index(idx);
     }
     else {
-      if (idx != -2) {
+      if (idx != -2) { // ":enc"
         // `unsupported_encoding` is not in header file.
         rb_warn("Unsupported encoding %s ignored", estr);
       }
@@ -150,11 +150,11 @@ VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
 
     int_enc = NULL;
     if (ptr) {
-      if (*ptr == '-' && *(ptr+1) == '\0') {
+      if (*ptr == '-' && *(ptr+1) == '\0') { // "enc:-"
         /* Special case - "-" => no transcoding */
         int_enc = (rb_encoding *)Qnil;
       }
-      else {
+      else { // "enc2:enc"
         idx2 = rb_enc_find_index(ptr);
         if (idx2 < 0) {
           // `unsupported_encoding` is not in header file.
@@ -175,8 +175,8 @@ VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
     rb_raise(rb_eArgError, ":encoding has to be a String");
   }
 
+  // @see CSV#raw_encoding
   // @see https://github.com/ruby/ruby/blob/70510d026f8d86693dccaba07417488eed09b41d/lib/csv.rb#L1567
-  // @see https://github.com/ruby/ruby/blob/70510d026f8d86693dccaba07417488eed09b41d/lib/csv.rb#L2300
   if (rb_respond_to(port, s_internal_encoding)) {
     r_encoding = rb_funcall(port, s_internal_encoding, 0);
     if (NIL_P(r_encoding)) {
@@ -192,12 +192,16 @@ VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
   else {
     r_encoding = rb_enc_from_encoding(rb_ascii8bit_encoding());
   }
+
+  // @see CSV#initialize
+  // @see https://github.com/ruby/ruby/blob/70510d026f8d86693dccaba07417488eed09b41d/lib/csv.rb#L2300
   if (NIL_P(r_encoding)) {
     r_encoding = rb_enc_from_encoding(rb_default_internal_encoding());
   }
   if (NIL_P(r_encoding)) {
     r_encoding = rb_enc_from_encoding(rb_default_external_encoding());
   }
+
   if (enc2 != NULL) {
     encoding = enc2;
   }
@@ -221,7 +225,7 @@ VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
   }
 
   
-#line 225 "ext/fastcsv/fastcsv.c"
+#line 229 "ext/fastcsv/fastcsv.c"
 	{
 	cs = fastcsv_start;
 	ts = 0;
@@ -229,7 +233,7 @@ VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
 	act = 0;
 	}
 
-#line 311 "ext/fastcsv/fastcsv.rl"
+#line 315 "ext/fastcsv/fastcsv.rl"
 
   while (!done) {
     VALUE str;
@@ -278,7 +282,7 @@ VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
 
     pe = p + len;
     
-#line 282 "ext/fastcsv/fastcsv.c"
+#line 286 "ext/fastcsv/fastcsv.c"
 	{
 	if ( p == pe )
 		goto _test_eof;
@@ -357,7 +361,7 @@ st4:
 case 4:
 #line 1 "NONE"
 	{ts = p;}
-#line 361 "ext/fastcsv/fastcsv.c"
+#line 365 "ext/fastcsv/fastcsv.c"
 	switch( (*p) ) {
 		case 0: goto tr14;
 		case 10: goto tr3;
@@ -408,7 +412,7 @@ st5:
 	if ( ++p == pe )
 		goto _test_eof5;
 case 5:
-#line 412 "ext/fastcsv/fastcsv.c"
+#line 416 "ext/fastcsv/fastcsv.c"
 	switch( (*p) ) {
 		case 0: goto tr2;
 		case 10: goto tr3;
@@ -470,7 +474,7 @@ st6:
 	if ( ++p == pe )
 		goto _test_eof6;
 case 6:
-#line 474 "ext/fastcsv/fastcsv.c"
+#line 478 "ext/fastcsv/fastcsv.c"
 	if ( (*p) == 0 )
 		goto tr18;
 	goto tr17;
@@ -521,7 +525,7 @@ st7:
 	if ( ++p == pe )
 		goto _test_eof7;
 case 7:
-#line 525 "ext/fastcsv/fastcsv.c"
+#line 529 "ext/fastcsv/fastcsv.c"
 	switch( (*p) ) {
 		case 0: goto tr18;
 		case 10: goto tr19;
@@ -556,7 +560,7 @@ st8:
 	if ( ++p == pe )
 		goto _test_eof8;
 case 8:
-#line 560 "ext/fastcsv/fastcsv.c"
+#line 564 "ext/fastcsv/fastcsv.c"
 	if ( (*p) == 0 )
 		goto tr21;
 	goto tr20;
@@ -590,7 +594,7 @@ st9:
 	if ( ++p == pe )
 		goto _test_eof9;
 case 9:
-#line 594 "ext/fastcsv/fastcsv.c"
+#line 598 "ext/fastcsv/fastcsv.c"
 	switch( (*p) ) {
 		case 10: goto tr16;
 		case 13: goto tr16;
@@ -614,7 +618,7 @@ st2:
 	if ( ++p == pe )
 		goto _test_eof2;
 case 2:
-#line 618 "ext/fastcsv/fastcsv.c"
+#line 622 "ext/fastcsv/fastcsv.c"
 	switch( (*p) ) {
 		case 0: goto st0;
 		case 10: goto tr8;
@@ -670,7 +674,7 @@ st3:
 	if ( ++p == pe )
 		goto _test_eof3;
 case 3:
-#line 674 "ext/fastcsv/fastcsv.c"
+#line 678 "ext/fastcsv/fastcsv.c"
 	switch( (*p) ) {
 		case 0: goto tr10;
 		case 10: goto tr11;
@@ -706,7 +710,7 @@ case 3:
 	_out: {}
 	}
 
-#line 359 "ext/fastcsv/fastcsv.rl"
+#line 363 "ext/fastcsv/fastcsv.rl"
 
     if (done && cs < fastcsv_first_final) {
       if (buf != NULL) {
