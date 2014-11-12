@@ -17,7 +17,7 @@
 // https://www.mail-archive.com/ragel-users@complang.org/
 
 # define ASSOCIATE_INDEX \
-  if (internal_index) { \
+  if (internal_index >= 0) { \
     rb_enc_associate_index(field, internal_index); \
     field = rb_str_encode(field, rb_enc_from_encoding(external_encoding), 0, Qnil); \
   } \
@@ -128,7 +128,7 @@ VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
     }
 
     if (internal_index < 0 && internal_index != -2) {
-      unsupported_encoding(string);
+      rb_warn("Unsupported encoding %s ignored", string);
     }
 
     if (pointer) {
@@ -137,8 +137,11 @@ VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
         external_encoding = rb_enc_from_index(external_index);
       }
       else {
-        unsupported_encoding(pointer);
+        rb_warn("Unsupported encoding %s ignored", string);
       }
+    }
+    else if (internal_index >= 0) {
+      external_encoding = rb_enc_from_index(internal_index);
     }
   }
   else if (!NIL_P(option)) {
@@ -158,7 +161,7 @@ VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
   }
 
   
-#line 162 "ext/fastcsv/fastcsv.c"
+#line 165 "ext/fastcsv/fastcsv.c"
 	{
 	cs = fastcsv_start;
 	ts = 0;
@@ -166,7 +169,7 @@ VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
 	act = 0;
 	}
 
-#line 258 "ext/fastcsv/fastcsv.rl"
+#line 261 "ext/fastcsv/fastcsv.rl"
 
   while (!done) {
     VALUE str;
@@ -219,7 +222,7 @@ VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
     //   eof = pe;
     // }
     
-#line 223 "ext/fastcsv/fastcsv.c"
+#line 226 "ext/fastcsv/fastcsv.c"
 	{
 	if ( p == pe )
 		goto _test_eof;
@@ -298,7 +301,7 @@ st4:
 case 4:
 #line 1 "NONE"
 	{ts = p;}
-#line 302 "ext/fastcsv/fastcsv.c"
+#line 305 "ext/fastcsv/fastcsv.c"
 	switch( (*p) ) {
 		case 0: goto tr14;
 		case 10: goto tr3;
@@ -349,7 +352,7 @@ st5:
 	if ( ++p == pe )
 		goto _test_eof5;
 case 5:
-#line 353 "ext/fastcsv/fastcsv.c"
+#line 356 "ext/fastcsv/fastcsv.c"
 	switch( (*p) ) {
 		case 0: goto tr2;
 		case 10: goto tr3;
@@ -411,7 +414,7 @@ st6:
 	if ( ++p == pe )
 		goto _test_eof6;
 case 6:
-#line 415 "ext/fastcsv/fastcsv.c"
+#line 418 "ext/fastcsv/fastcsv.c"
 	if ( (*p) == 0 )
 		goto tr18;
 	goto tr17;
@@ -462,7 +465,7 @@ st7:
 	if ( ++p == pe )
 		goto _test_eof7;
 case 7:
-#line 466 "ext/fastcsv/fastcsv.c"
+#line 469 "ext/fastcsv/fastcsv.c"
 	switch( (*p) ) {
 		case 0: goto tr18;
 		case 10: goto tr19;
@@ -497,7 +500,7 @@ st8:
 	if ( ++p == pe )
 		goto _test_eof8;
 case 8:
-#line 501 "ext/fastcsv/fastcsv.c"
+#line 504 "ext/fastcsv/fastcsv.c"
 	if ( (*p) == 0 )
 		goto tr21;
 	goto tr20;
@@ -531,7 +534,7 @@ st9:
 	if ( ++p == pe )
 		goto _test_eof9;
 case 9:
-#line 535 "ext/fastcsv/fastcsv.c"
+#line 538 "ext/fastcsv/fastcsv.c"
 	switch( (*p) ) {
 		case 10: goto tr16;
 		case 13: goto tr16;
@@ -555,7 +558,7 @@ st2:
 	if ( ++p == pe )
 		goto _test_eof2;
 case 2:
-#line 559 "ext/fastcsv/fastcsv.c"
+#line 562 "ext/fastcsv/fastcsv.c"
 	switch( (*p) ) {
 		case 0: goto st0;
 		case 10: goto tr8;
@@ -611,7 +614,7 @@ st3:
 	if ( ++p == pe )
 		goto _test_eof3;
 case 3:
-#line 615 "ext/fastcsv/fastcsv.c"
+#line 618 "ext/fastcsv/fastcsv.c"
 	switch( (*p) ) {
 		case 0: goto tr10;
 		case 10: goto tr11;
@@ -647,7 +650,7 @@ case 3:
 	_out: {}
 	}
 
-#line 310 "ext/fastcsv/fastcsv.rl"
+#line 313 "ext/fastcsv/fastcsv.rl"
 
     if (done && cs < fastcsv_first_final) {
       if (buf != NULL) {

@@ -4,3 +4,5 @@
 Gemfile.lock
 doc/*
 pkg/*
+tmp/*
+lib/fastcsv/fastcsv.bundle

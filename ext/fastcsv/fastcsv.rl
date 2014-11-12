@@ -15,7 +15,7 @@
 // https://www.mail-archive.com/ragel-users@complang.org/
 
 # define ASSOCIATE_INDEX \
-  if (internal_index) { \
+  if (internal_index >= 0) { \
     rb_enc_associate_index(field, internal_index); \
     field = rb_str_encode(field, rb_enc_from_encoding(external_encoding), 0, Qnil); \
   } \
@@ -225,7 +225,7 @@ VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
     }
 
     if (internal_index < 0 && internal_index != -2) {
-      unsupported_encoding(string);
+      rb_warn("Unsupported encoding %s ignored", string);
     }
 
     if (pointer) {
@@ -234,8 +234,11 @@ VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
         external_encoding = rb_enc_from_index(external_index);
       }
       else {
-        unsupported_encoding(pointer);
+        rb_warn("Unsupported encoding %s ignored", string);
       }
+    }
+    else if (internal_index >= 0) {
+      external_encoding = rb_enc_from_index(internal_index);
     }
   }
   else if (!NIL_P(option)) {

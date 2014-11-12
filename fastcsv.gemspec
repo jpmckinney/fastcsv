@@ -11,8 +11,14 @@ Gem::Specification.new do |s|
   s.license     = 'MIT'
 
   s.files         = `git ls-files`.split("\n")
-  s.extensions    = ['ext/fastcsv/extconf.rb']
+  s.test_files    = `git ls-files -- {test,spec,features}/*`.split("\n")
+  s.executables   = `git ls-files -- bin/*`.split("\n").map{ |f| File.basename(f) }
+  s.require_paths = ["lib"]
+  s.extensions    = ["ext/fastcsv/extconf.rb"]
 
+  s.add_development_dependency('coveralls')
+  s.add_development_dependency('json', '~> 1.7.7') # to silence coveralls warning
   s.add_development_dependency('rake')
   s.add_development_dependency('rake-compiler')
+  s.add_development_dependency('rspec', '~> 3.1')
 end
