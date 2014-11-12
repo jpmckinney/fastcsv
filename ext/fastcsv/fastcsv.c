@@ -25,7 +25,7 @@ static VALUE mModule, rb_eParseError;
 static ID s_read, s_to_str, s_internal_encoding, s_external_encoding, s_string, s_encoding;
 
 
-#line 136 "ext/fastcsv/fastcsv.rl"
+#line 125 "ext/fastcsv/fastcsv.rl"
 
 
 
@@ -37,7 +37,7 @@ static const int fastcsv_error = 0;
 static const int fastcsv_en_main = 4;
 
 
-#line 139 "ext/fastcsv/fastcsv.rl"
+#line 128 "ext/fastcsv/fastcsv.rl"
 
 // 16 kB
 #define BUFSIZE 16384
@@ -81,7 +81,7 @@ VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
   VALUE r_encoding;
 
   VALUE option;
-  char quote_char = '"'; //, *col_sep = ",", *row_sep = "\r\n";
+  char quote_char = '"';
 
   rb_scan_args(argc, argv, "11", &port, &opts);
   taint = OBJ_TAINTED(port);
@@ -102,32 +102,6 @@ VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
   else if (TYPE(opts) != T_HASH) {
     rb_raise(rb_eArgError, "options has to be a Hash or nil");
   }
-
-  // @note Add machines for common CSV dialects, or see if we can use "when"
-  // from Chapter 6 to compare the character to the host program's variable.
-  // option = rb_hash_aref(opts, ID2SYM(rb_intern("quote_char")));
-  // if (TYPE(option) == T_STRING && RSTRING_LEN(option) == 1) {
-  //   quote_char = *StringValueCStr(option);
-  // }
-  // else if (!NIL_P(option)) {
-  //   rb_raise(rb_eArgError, ":quote_char has to be a single character String");
-  // }
-
-  // option = rb_hash_aref(opts, ID2SYM(rb_intern("col_sep")));
-  // if (TYPE(option) == T_STRING) {
-  //   col_sep = StringValueCStr(option);
-  // }
-  // else if (!NIL_P(option)) {
-  //   rb_raise(rb_eArgError, ":col_sep has to be a String");
-  // }
-
-  // option = rb_hash_aref(opts, ID2SYM(rb_intern("row_sep")));
-  // if (TYPE(option) == T_STRING) {
-  //   row_sep = StringValueCStr(option);
-  // }
-  // else if (!NIL_P(option)) {
-  //   rb_raise(rb_eArgError, ":row_sep has to be a String");
-  // }
 
   // @see rb_io_extract_modeenc
   /* Set to defaults */
@@ -168,7 +142,7 @@ VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
     }
     else {
       if (idx != -2) {
-        // unsupported_encoding is not in header file.
+        // `unsupported_encoding` is not in header file.
         rb_warn("Unsupported encoding %s ignored", estr);
       }
       ext_enc = NULL;
@@ -183,7 +157,7 @@ VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
       else {
         idx2 = rb_enc_find_index(ptr);
         if (idx2 < 0) {
-          // unsupported_encoding is not in header file.
+          // `unsupported_encoding` is not in header file.
           rb_warn("Unsupported encoding %s ignored", ptr);
         }
         else if (idx2 == idx) {
@@ -247,7 +221,7 @@ VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
   }
 
   
-#line 251 "ext/fastcsv/fastcsv.c"
+#line 225 "ext/fastcsv/fastcsv.c"
 	{
 	cs = fastcsv_start;
 	ts = 0;
@@ -255,7 +229,7 @@ VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
 	act = 0;
 	}
 
-#line 348 "ext/fastcsv/fastcsv.rl"
+#line 311 "ext/fastcsv/fastcsv.rl"
 
   while (!done) {
     VALUE str;
@@ -303,12 +277,8 @@ VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
     }
 
     pe = p + len;
-    // if (done) {
-    //   // This triggers the eof action in the non-scanner version.
-    //   eof = pe;
-    // }
     
-#line 312 "ext/fastcsv/fastcsv.c"
+#line 282 "ext/fastcsv/fastcsv.c"
 	{
 	if ( p == pe )
 		goto _test_eof;
@@ -327,7 +297,7 @@ tr0:
 	}
 	goto st4;
 tr10:
-#line 102 "ext/fastcsv/fastcsv.rl"
+#line 101 "ext/fastcsv/fastcsv.rl"
 	{
     if (!NIL_P(field) || RARRAY_LEN(row)) {
       rb_ary_push(row, field);
@@ -336,19 +306,19 @@ tr10:
       rb_yield(row);
     }
   }
-#line 126 "ext/fastcsv/fastcsv.rl"
+#line 123 "ext/fastcsv/fastcsv.rl"
 	{te = p+1;}
 	goto st4;
 tr16:
-#line 126 "ext/fastcsv/fastcsv.rl"
+#line 123 "ext/fastcsv/fastcsv.rl"
 	{te = p;p--;}
 	goto st4;
 tr17:
-#line 125 "ext/fastcsv/fastcsv.rl"
+#line 122 "ext/fastcsv/fastcsv.rl"
 	{te = p;p--;}
 	goto st4;
 tr18:
-#line 102 "ext/fastcsv/fastcsv.rl"
+#line 101 "ext/fastcsv/fastcsv.rl"
 	{
     if (!NIL_P(field) || RARRAY_LEN(row)) {
       rb_ary_push(row, field);
@@ -357,15 +327,15 @@ tr18:
       rb_yield(row);
     }
   }
-#line 125 "ext/fastcsv/fastcsv.rl"
+#line 122 "ext/fastcsv/fastcsv.rl"
 	{te = p+1;}
 	goto st4;
 tr20:
-#line 124 "ext/fastcsv/fastcsv.rl"
+#line 121 "ext/fastcsv/fastcsv.rl"
 	{te = p;p--;}
 	goto st4;
 tr21:
-#line 102 "ext/fastcsv/fastcsv.rl"
+#line 101 "ext/fastcsv/fastcsv.rl"
 	{
     if (!NIL_P(field) || RARRAY_LEN(row)) {
       rb_ary_push(row, field);
@@ -374,7 +344,7 @@ tr21:
       rb_yield(row);
     }
   }
-#line 124 "ext/fastcsv/fastcsv.rl"
+#line 121 "ext/fastcsv/fastcsv.rl"
 	{te = p+1;}
 	goto st4;
 st4:
@@ -387,7 +357,7 @@ st4:
 case 4:
 #line 1 "NONE"
 	{ts = p;}
-#line 391 "ext/fastcsv/fastcsv.c"
+#line 361 "ext/fastcsv/fastcsv.c"
 	switch( (*p) ) {
 		case 0: goto tr14;
 		case 10: goto tr3;
@@ -422,7 +392,7 @@ tr2:
       ENCODE;
     }
   }
-#line 102 "ext/fastcsv/fastcsv.rl"
+#line 101 "ext/fastcsv/fastcsv.rl"
 	{
     if (!NIL_P(field) || RARRAY_LEN(row)) {
       rb_ary_push(row, field);
@@ -431,14 +401,14 @@ tr2:
       rb_yield(row);
     }
   }
-#line 126 "ext/fastcsv/fastcsv.rl"
+#line 123 "ext/fastcsv/fastcsv.rl"
 	{act = 3;}
 	goto st5;
 st5:
 	if ( ++p == pe )
 		goto _test_eof5;
 case 5:
-#line 442 "ext/fastcsv/fastcsv.c"
+#line 412 "ext/fastcsv/fastcsv.c"
 	switch( (*p) ) {
 		case 0: goto tr2;
 		case 10: goto tr3;
@@ -459,7 +429,7 @@ tr3:
       ENCODE;
     }
   }
-#line 92 "ext/fastcsv/fastcsv.rl"
+#line 91 "ext/fastcsv/fastcsv.rl"
 	{
     if (!NIL_P(field) || RARRAY_LEN(row)) { // same as new_field
       rb_ary_push(row, field);
@@ -481,7 +451,7 @@ tr19:
   }
 	goto st6;
 tr11:
-#line 92 "ext/fastcsv/fastcsv.rl"
+#line 91 "ext/fastcsv/fastcsv.rl"
 	{
     if (!NIL_P(field) || RARRAY_LEN(row)) { // same as new_field
       rb_ary_push(row, field);
@@ -500,7 +470,7 @@ st6:
 	if ( ++p == pe )
 		goto _test_eof6;
 case 6:
-#line 504 "ext/fastcsv/fastcsv.c"
+#line 474 "ext/fastcsv/fastcsv.c"
 	if ( (*p) == 0 )
 		goto tr18;
 	goto tr17;
@@ -516,7 +486,7 @@ tr4:
       ENCODE;
     }
   }
-#line 92 "ext/fastcsv/fastcsv.rl"
+#line 91 "ext/fastcsv/fastcsv.rl"
 	{
     if (!NIL_P(field) || RARRAY_LEN(row)) { // same as new_field
       rb_ary_push(row, field);
@@ -532,7 +502,7 @@ tr4:
   }
 	goto st7;
 tr12:
-#line 92 "ext/fastcsv/fastcsv.rl"
+#line 91 "ext/fastcsv/fastcsv.rl"
 	{
     if (!NIL_P(field) || RARRAY_LEN(row)) { // same as new_field
       rb_ary_push(row, field);
@@ -551,7 +521,7 @@ st7:
 	if ( ++p == pe )
 		goto _test_eof7;
 case 7:
-#line 555 "ext/fastcsv/fastcsv.c"
+#line 525 "ext/fastcsv/fastcsv.c"
 	switch( (*p) ) {
 		case 0: goto tr18;
 		case 10: goto tr19;
@@ -569,14 +539,14 @@ tr5:
       ENCODE;
     }
   }
-#line 87 "ext/fastcsv/fastcsv.rl"
+#line 86 "ext/fastcsv/fastcsv.rl"
 	{
     rb_ary_push(row, field);
     field = Qnil;
   }
 	goto st8;
 tr13:
-#line 87 "ext/fastcsv/fastcsv.rl"
+#line 86 "ext/fastcsv/fastcsv.rl"
 	{
     rb_ary_push(row, field);
     field = Qnil;
@@ -586,14 +556,14 @@ st8:
 	if ( ++p == pe )
 		goto _test_eof8;
 case 8:
-#line 590 "ext/fastcsv/fastcsv.c"
+#line 560 "ext/fastcsv/fastcsv.c"
 	if ( (*p) == 0 )
 		goto tr21;
 	goto tr20;
 tr14:
 #line 1 "NONE"
 	{te = p+1;}
-#line 102 "ext/fastcsv/fastcsv.rl"
+#line 101 "ext/fastcsv/fastcsv.rl"
 	{
     if (!NIL_P(field) || RARRAY_LEN(row)) {
       rb_ary_push(row, field);
@@ -613,14 +583,14 @@ tr14:
       ENCODE;
     }
   }
-#line 126 "ext/fastcsv/fastcsv.rl"
+#line 123 "ext/fastcsv/fastcsv.rl"
 	{act = 3;}
 	goto st9;
 st9:
 	if ( ++p == pe )
 		goto _test_eof9;
 case 9:
-#line 624 "ext/fastcsv/fastcsv.c"
+#line 594 "ext/fastcsv/fastcsv.c"
 	switch( (*p) ) {
 		case 10: goto tr16;
 		case 13: goto tr16;
@@ -644,7 +614,7 @@ st2:
 	if ( ++p == pe )
 		goto _test_eof2;
 case 2:
-#line 648 "ext/fastcsv/fastcsv.c"
+#line 618 "ext/fastcsv/fastcsv.c"
 	switch( (*p) ) {
 		case 0: goto st0;
 		case 10: goto tr8;
@@ -659,7 +629,6 @@ tr9:
 #line 51 "ext/fastcsv/fastcsv.rl"
 	{
     if (p == ts) {
-      // Quoted empty fields are "" in Ruby.
       field = rb_enc_str_new("", 0, encoding);
       ENCODE;
     }
@@ -701,7 +670,7 @@ st3:
 	if ( ++p == pe )
 		goto _test_eof3;
 case 3:
-#line 705 "ext/fastcsv/fastcsv.c"
+#line 674 "ext/fastcsv/fastcsv.c"
 	switch( (*p) ) {
 		case 0: goto tr10;
 		case 10: goto tr11;
@@ -737,7 +706,7 @@ case 3:
 	_out: {}
 	}
 
-#line 400 "ext/fastcsv/fastcsv.rl"
+#line 359 "ext/fastcsv/fastcsv.rl"
 
     if (done && cs < fastcsv_first_final) {
       if (buf != NULL) {

@@ -20,7 +20,7 @@ if (enc2 != NULL) { \
 }
 
 static VALUE mModule, rb_eParseError;
-static ID s_read, s_to_str;
+static ID s_read, s_to_str, s_internal_encoding, s_external_encoding, s_string, s_encoding;
 
 %%{
   machine fastcsv;
@@ -165,6 +165,7 @@ VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
   VALUE row = rb_ary_new(), field = Qnil, bufsize = Qnil;
   int done = 0, unclosed_line = 0, buffer_size = 0, taint = 0;
   rb_encoding *enc = NULL, *enc2 = NULL, *encoding = NULL;
+  VALUE r_encoding;
 
   VALUE option;
   char quote_char = '"';
@@ -259,6 +260,39 @@ VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
   }
   else if (!NIL_P(option)) {
     rb_raise(rb_eArgError, ":encoding has to be a String");
+  }
+
+  // @see https://github.com/ruby/ruby/blob/70510d026f8d86693dccaba07417488eed09b41d/lib/csv.rb#L1567
+  // @see https://github.com/ruby/ruby/blob/70510d026f8d86693dccaba07417488eed09b41d/lib/csv.rb#L2300
+  if (rb_respond_to(port, s_internal_encoding)) {
+    r_encoding = rb_funcall(port, s_internal_encoding, 0);
+    if (NIL_P(r_encoding)) {
+      r_encoding = rb_funcall(port, s_external_encoding, 0);
+    }
+  }
+  else if (rb_respond_to(port, s_string)) {
+    r_encoding = rb_funcall(rb_funcall(port, s_string, 0), s_encoding, 0);
+  }
+  else if (rb_respond_to(port, s_encoding)) {
+    r_encoding = rb_funcall(port, s_encoding, 0);
+  }
+  else {
+    r_encoding = rb_enc_from_encoding(rb_ascii8bit_encoding());
+  }
+  if (NIL_P(r_encoding)) {
+    r_encoding = rb_enc_from_encoding(rb_default_internal_encoding());
+  }
+  if (NIL_P(r_encoding)) {
+    r_encoding = rb_enc_from_encoding(rb_default_external_encoding());
+  }
+  if (enc2 != NULL) {
+    encoding = enc2;
+  }
+  else if (enc != NULL) {
+    encoding = enc;
+  }
+  else if (!NIL_P(r_encoding)) {
+    encoding = rb_enc_get(r_encoding);
   }
 
   buffer_size = BUFSIZE;
@@ -360,6 +394,10 @@ VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
 void Init_fastcsv() {
   s_read = rb_intern("read");
   s_to_str = rb_intern("to_str");
+  s_internal_encoding = rb_intern("internal_encoding");
+  s_external_encoding = rb_intern("external_encoding");
+  s_string = rb_intern("string");
+  s_encoding = rb_intern("encoding");
 
   mModule = rb_define_module("FastCSV");
   rb_define_attr(rb_singleton_class(mModule), "buffer_size", 1, 1);
