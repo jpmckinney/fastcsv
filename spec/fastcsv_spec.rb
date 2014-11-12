@@ -57,6 +57,9 @@ RSpec.shared_examples 'a CSV parser' do
     %(foo,"bar\nbaz",bzz),
     %(foo,"""bar""baz""bzz""",zzz),
 
+    # Single quotes.
+    %('foo','bar','baz'),
+
     # Buffers.
     "01234567890" * 2_000, # 20,000 > BUFSIZE
     "0123456789," * 2_000,
@@ -68,7 +71,7 @@ RSpec.shared_examples 'a CSV parser' do
     # Uneven data types.
     "2000-01-01,2,x\nx,2000-01-01,2",
   ].each do |csv|
-    it "should parse: #{csv}" do
+    it "should parse: #{csv.inspect.gsub('\"', '"')}" do
       expect(parse(csv)).to eq(CSV.parse(csv))
     end
   end
@@ -112,34 +115,45 @@ RSpec.shared_examples 'a CSV parser' do
     end
   end
 
+  it "should parse an encoded string" do
+    csv = "ß"
+    actual = parse(csv)
+    expected = CSV.parse(csv)
+    expect(actual[0][0].encoding).to eq(expected[0][0].encoding)
+    expect(actual).to eq(expected)
+  end
+
   it 'should raise an error on mixed row separators are' do
-    csv = "foo\rbar\nbaz\r\n"
-    expect{CSV.parse(csv)}.to raise_error(CSV::MalformedCSVError, 'Unquoted fields do not allow \r or \n (line 2).')
+    expect{CSV.parse("foo\rbar\nbaz\r\n")}.to raise_error(CSV::MalformedCSVError, 'Unquoted fields do not allow \r or \n (line 2).')
     skip
   end
 
-  it 'should raise an error if no block is given' do
-    expect{parse_without_block('x')}.to raise_error(LocalJumpError, 'no block given')
+  context 'when initializing' do
+    it 'should raise an error if no block is given' do
+      expect{parse_without_block('x')}.to raise_error(LocalJumpError, 'no block given')
+    end
+
+    it 'should not raise an error if no block and empty input' do
+      expect{parse_without_block('')}.to_not raise_error
+    end
+
+    it 'should raise an error if the options are not a Hash or nil' do
+      expect{parse('', '')}.to raise_error(ArgumentError, 'options has to be a Hash or nil')
+    end
   end
 
-  it 'should not raise an error if no block and empty input' do
-    expect{parse_without_block('')}.to_not raise_error
-  end
+  context 'when setting a buffer size' do
+    it 'should allow nil' do
+      FastCSV.buffer_size = nil
+      expect(parse(simple)).to eq(CSV.parse(simple))
+      FastCSV.buffer_size = nil
+    end
 
-  it 'should raise an error if the options are not a Hash or nil' do
-    expect{parse('', '')}.to raise_error(ArgumentError, 'options has to be a Hash or nil')
-  end
-
-  it 'should allow nil buffer size' do
-    FastCSV.buffer_size = nil
-    expect(parse(simple)).to eq(CSV.parse(simple))
-    FastCSV.buffer_size = nil
-  end
-
-  it 'should recover from a zero buffer size' do
-    FastCSV.buffer_size = 0
-    expect(parse(simple)).to eq(CSV.parse(simple))
-    FastCSV.buffer_size = nil
+    it 'should allow zero' do
+      FastCSV.buffer_size = 0
+      expect(parse(simple)).to eq(CSV.parse(simple))
+      FastCSV.buffer_size = nil
+    end
   end
 end
 
@@ -184,35 +198,47 @@ RSpec.describe FastCSV do
     end
   end
 
-  def parse_with_encoding(basename, encoding)
-    filename = File.expand_path(File.join('..', 'fixtures', basename), __FILE__)
-    options = {encoding: encoding}
-    File.open(filename) do |io|
-      rows = []
-      FastCSV.raw_parse(io, options){|row| rows << row}
-      expected = CSV.read(filename, options)
-      expect(rows).to eq(expected)
-      expect(rows[0][0].encoding).to eq(expected[0][0].encoding)
+  context 'with encoded strings' do
+    def parse_with_encoding(basename, encoding)
+      filename = File.expand_path(File.join('..', 'fixtures', basename), __FILE__)
+      options = {encoding: encoding}
+      File.open(filename) do |io|
+        rows = []
+        FastCSV.raw_parse(io, options){|row| rows << row}
+        expected = CSV.read(filename, options)
+        expect(rows[0][0].encoding).to eq(expected[0][0].encoding)
+        expect(rows).to eq(expected)
+      end
+    end
+
+    it 'should encode' do
+      parse_with_encoding('iso-8859-1.csv', 'iso-8859-1')
+    end
+
+    it 'should transcode' do
+      parse_with_encoding('iso-8859-1.csv', 'iso-8859-1:utf-8')
+    end
+
+    it 'should recover from blank external encoding' do
+      parse_with_encoding('utf-8.csv', ':utf-8')
+    end
+
+    it 'should recover from invalid internal encoding' do
+      parse_with_encoding('utf-8.csv', 'invalid')
+    end
+
+    it 'should recover from invalid external encoding' do
+      parse_with_encoding('utf-8.csv', 'invalid:-')
+    end
+
+    it 'should recover from invalid encodings' do
+      parse_with_encoding('utf-8.csv', 'invalid:invalid')
     end
   end
 
-  it 'should encode the input' do
-    parse_with_encoding('iso-8859-1.csv', 'iso-8859-1')
-  end
-
-  it 'should encode the input with a blank internal encoding' do
-    parse_with_encoding('utf-8.csv', ':utf-8')
-  end
-
-  it 'should transcode the input' do
-    parse_with_encoding('iso-8859-1.csv', 'iso-8859-1:utf-8')
-  end
-
-  it 'should invalid encoding' do
-    parse_with_encoding('utf-8.csv', 'invalid')
-  end
-
-  it 'should raise an error if the input is not a String or IO' do
-    expect{FastCSV.raw_parse(nil)}.to raise_error(ArgumentError, 'data has to respond to #read or #to_str')
+  context 'when initializing' do
+    it 'should raise an error if the input is not a String or IO' do
+      expect{FastCSV.raw_parse(nil)}.to raise_error(ArgumentError, 'data has to respond to #read or #to_str')
+    end
   end
 end

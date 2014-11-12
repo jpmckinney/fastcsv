@@ -14,14 +14,10 @@
 // Ragel help.
 // https://www.mail-archive.com/ragel-users@complang.org/
 
-# define ASSOCIATE_INDEX \
-  if (internal_index >= 0) { \
-    rb_enc_associate_index(field, internal_index); \
-    field = rb_str_encode(field, rb_enc_from_encoding(external_encoding), 0, Qnil); \
-  } \
-  else { \
-    rb_enc_associate_index(field, rb_enc_to_index(external_encoding)); \
-  }
+#define ENCODE \
+if (enc2 != NULL) { \
+  field = rb_str_encode(field, rb_enc_from_encoding(enc), 0, Qnil); \
+}
 
 static VALUE mModule, rb_eParseError;
 static ID s_read, s_to_str;
@@ -47,15 +43,15 @@ static ID s_read, s_to_str;
       field = Qnil;
     }
     else if (p > ts) {
-      field = rb_str_new(ts, p - ts);
-      ASSOCIATE_INDEX;
+      field = rb_enc_str_new(ts, p - ts, encoding);
+      ENCODE;
     }
   }
 
   action read_quoted {
     if (p == ts) {
-      field = rb_str_new2("");
-      ASSOCIATE_INDEX;
+      field = rb_enc_str_new("", 0, encoding);
+      ENCODE;
     }
     // @note If we add an action on '""', we can skip some steps if no '""' is found.
     else if (p > ts) {
@@ -78,8 +74,8 @@ static ID s_read, s_to_str;
         reader++;
       }
 
-      field = rb_str_new(copy, writer - copy);
-      ASSOCIATE_INDEX;
+      field = rb_enc_str_new(copy, writer - copy, enc);
+      ENCODE;
 
       if (copy != NULL) {
         free(copy);
@@ -118,29 +114,48 @@ static ID s_read, s_to_str;
   unquoted = (any* -- quote_char -- col_sep -- row_sep - EOF) %read_unquoted;
   quoted = quote_char >open_quote (any - quote_char - EOF | quote_char quote_char | row_sep)* %read_quoted quote_char >close_quote;
   field = unquoted | quoted;
-  # fields = (field col_sep)* field?;
-  # file = (fields row_sep >new_row)* fields?;
 
   # @see Ragel Guide: 6.3 Scanners
-  # Remember that an unquoted field can be zero-length.
+  # An unquoted field can be zero-length.
   main := |*
     field col_sep EOF?;
     field row_sep >new_row EOF?;
     field EOF;
   *|;
-
-  # Non-scanner version requires very large buffer.
-  # main := file $/{
-  #   if (!NIL_P(field) || RARRAY_LEN(row)) {
-  #     rb_ary_push(row, field);
-  #     rb_yield(row);
-  #   }
-  # };
 }%%
 
 %% write data;
 
+// 16 kB
 #define BUFSIZE 16384
+
+// @see http://rxr.whitequark.org/mri/source/io.c#4845
+static void
+rb_io_ext_int_to_encs(rb_encoding *ext, rb_encoding *intern, rb_encoding **enc, rb_encoding **enc2, int fmode)
+{
+  int default_ext = 0;
+
+  if (ext == NULL) {
+    ext = rb_default_external_encoding();
+    default_ext = 1;
+  }
+  if (ext == rb_ascii8bit_encoding()) {
+    /* If external is ASCII-8BIT, no transcoding */
+    intern = NULL;
+  }
+  else if (intern == NULL) {
+    intern = rb_default_internal_encoding();
+  }
+  if (intern == NULL || intern == (rb_encoding *)Qnil || intern == ext) {
+    /* No internal encoding => use external + no transcoding */
+    *enc = (default_ext && intern != ext) ? NULL : ext;
+    *enc2 = NULL;
+  }
+  else {
+    *enc = intern;
+    *enc2 = ext;
+  }
+}
 
 VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
   int cs, act, have = 0, curline = 1, io = 0;
@@ -149,11 +164,10 @@ VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
   VALUE port, opts;
   VALUE row = rb_ary_new(), field = Qnil, bufsize = Qnil;
   int done = 0, unclosed_line = 0, buffer_size = 0, taint = 0;
-  int internal_index = 0, external_index = rb_enc_to_index(rb_default_external_encoding());
-  rb_encoding *external_encoding = rb_default_external_encoding();
+  rb_encoding *enc = NULL, *enc2 = NULL, *encoding = NULL;
 
   VALUE option;
-  char quote_char = '"'; //, *col_sep = ",", *row_sep = "\r\n";
+  char quote_char = '"';
 
   rb_scan_args(argc, argv, "11", &port, &opts);
   taint = OBJ_TAINTED(port);
@@ -175,71 +189,73 @@ VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
     rb_raise(rb_eArgError, "options has to be a Hash or nil");
   }
 
-  // @note Add machines for common CSV dialects, or see if we can use "when"
-  // from Chapter 6 to compare the character to the host program's variable.
-  // option = rb_hash_aref(opts, ID2SYM(rb_intern("quote_char")));
-  // if (TYPE(option) == T_STRING && RSTRING_LEN(option) == 1) {
-  //   quote_char = *StringValueCStr(option);
-  // }
-  // else if (!NIL_P(option)) {
-  //   rb_raise(rb_eArgError, ":quote_char has to be a single character String");
-  // }
+  // @see rb_io_extract_modeenc
+  /* Set to defaults */
+  rb_io_ext_int_to_encs(NULL, NULL, &enc, &enc2, 0);
 
-  // option = rb_hash_aref(opts, ID2SYM(rb_intern("col_sep")));
-  // if (TYPE(option) == T_STRING) {
-  //   col_sep = StringValueCStr(option);
-  // }
-  // else if (!NIL_P(option)) {
-  //   rb_raise(rb_eArgError, ":col_sep has to be a String");
-  // }
-
-  // option = rb_hash_aref(opts, ID2SYM(rb_intern("row_sep")));
-  // if (TYPE(option) == T_STRING) {
-  //   row_sep = StringValueCStr(option);
-  // }
-  // else if (!NIL_P(option)) {
-  //   rb_raise(rb_eArgError, ":row_sep has to be a String");
-  // }
-
+  // "enc" (internal) or "enc2:enc" (external:internal) or "enc:-" (external).
+  // We don't support binmode, which would force "ASCII-8BIT", or "BOM|UTF-*".
+  // @see http://ruby-doc.org/core-2.1.1/IO.html#method-c-new-label-Open+Mode
   option = rb_hash_aref(opts, ID2SYM(rb_intern("encoding")));
   if (TYPE(option) == T_STRING) {
-    // @see parse_mode_enc in Ruby's io.c
-    const char *string = StringValueCStr(option), *pointer;
-    char internal_encoding_name[ENCODING_MAXNAMELEN + 1];
+    // parse_mode_enc is not in header file.
+    const char *estr = StringValueCStr(option), *ptr;
+    char encname[ENCODING_MAXNAMELEN+1];
+    int idx, idx2;
+    rb_encoding *ext_enc, *int_enc;
 
-    pointer = strrchr(string, ':');
-    if (pointer) {
-      long len = (pointer++) - string;
+    /* parse estr as "enc" or "enc2:enc" or "enc:-" */
+
+    ptr = strrchr(estr, ':');
+    if (ptr) {
+      long len = (ptr++) - estr;
       if (len == 0 || len > ENCODING_MAXNAMELEN) {
-        internal_index = -1;
+        idx = -1;
       }
       else {
-        memcpy(internal_encoding_name, string, len);
-        internal_encoding_name[len] = '\0';
-        string = internal_encoding_name;
-        internal_index = rb_enc_find_index(internal_encoding_name);
+        memcpy(encname, estr, len);
+        encname[len] = '\0';
+        estr = encname;
+        idx = rb_enc_find_index(encname);
       }
     }
     else {
-      internal_index = rb_enc_find_index(string);
+      idx = rb_enc_find_index(estr);
     }
 
-    if (internal_index < 0 && internal_index != -2) {
-      rb_warn("Unsupported encoding %s ignored", string);
+    if (idx >= 0) {
+      ext_enc = rb_enc_from_index(idx);
+    }
+    else {
+      if (idx != -2) {
+        // `unsupported_encoding` is not in header file.
+        rb_warn("Unsupported encoding %s ignored", estr);
+      }
+      ext_enc = NULL;
     }
 
-    if (pointer) {
-      external_index = rb_enc_find_index(pointer);
-      if (external_index >= 0) {
-        external_encoding = rb_enc_from_index(external_index);
+    int_enc = NULL;
+    if (ptr) {
+      if (*ptr == '-' && *(ptr+1) == '\0') {
+        /* Special case - "-" => no transcoding */
+        int_enc = (rb_encoding *)Qnil;
       }
       else {
-        rb_warn("Unsupported encoding %s ignored", string);
+        idx2 = rb_enc_find_index(ptr);
+        if (idx2 < 0) {
+          // `unsupported_encoding` is not in header file.
+          rb_warn("Unsupported encoding %s ignored", ptr);
+        }
+        else if (idx2 == idx) {
+          int_enc = (rb_encoding *)Qnil;
+        }
+        else {
+          int_enc = rb_enc_from_index(idx2);
+        }
       }
     }
-    else if (internal_index >= 0) {
-      external_encoding = rb_enc_from_index(internal_index);
-    }
+
+    rb_io_ext_int_to_encs(ext_enc, int_enc, &enc, &enc2, 0);
   }
   else if (!NIL_P(option)) {
     rb_raise(rb_eArgError, ":encoding has to be a String");
@@ -305,10 +321,6 @@ VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
     }
 
     pe = p + len;
-    // if (done) {
-    //   // This triggers the eof action in the non-scanner version.
-    //   eof = pe;
-    // }
     %% write exec;
 
     if (done && cs < fastcsv_first_final) {
