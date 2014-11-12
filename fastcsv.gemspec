@@ -7,7 +7,7 @@ Gem::Specification.new do |s|
   s.authors     = ["Open North"]
   s.email       = ["info@opennorth.ca"]
   s.homepage    = "http://github.com/opennorth/fastcsv"
-  s.summary     = %q{A Ragel-based CSV parser}
+  s.summary     = %q{A fast Ragel-based CSV parser}
   s.license     = 'MIT'
 
   s.files         = `git ls-files`.split("\n")

@@ -14,6 +14,15 @@
 // Ragel help.
 // https://www.mail-archive.com/ragel-users@complang.org/
 
+# define ASSOCIATE_INDEX \
+  if (internal_encoding) { \
+    rb_enc_associate_index(field, rb_enc_to_index(internal_encoding)); \
+    field = rb_str_encode(field, rb_enc_from_encoding(external_encoding), 0, Qnil); \
+  } \
+  else { \
+    rb_enc_associate_index(field, rb_enc_to_index(external_encoding)); \
+  }
+
 static VALUE mModule, rb_eParseError;
 static ID s_read, s_to_str;
 
@@ -39,17 +48,17 @@ static ID s_read, s_to_str;
     }
     else if (p > ts) {
       field = rb_str_new(ts, p - ts);
-      rb_enc_associate_index(field, encoding_index);
+      ASSOCIATE_INDEX;
     }
   }
 
   action read_quoted {
     if (p == ts) {
       field = rb_str_new2("");
-      rb_enc_associate_index(field, encoding_index);
+      ASSOCIATE_INDEX;
     }
     else if (p > ts) {
-      // Operating on ts in-place produces odd behavior.
+      // Operating on ts in-place produces odd behavior, FYI.
       char *copy = ALLOC_N(char, p - ts);
       memcpy(copy, ts, p - ts);
 
@@ -69,7 +78,7 @@ static ID s_read, s_to_str;
       }
 
       field = rb_str_new(copy, writer - copy);
-      rb_enc_associate_index(field, encoding_index);
+      ASSOCIATE_INDEX;
 
       if (copy != NULL) {
         free(copy);
@@ -98,22 +107,23 @@ static ID s_read, s_to_str;
   unquoted = (any* -- quote_char -- col_sep -- row_sep) %read_unquoted;
   quoted = quote_char >open_quote (^quote_char | quote_char quote_char | row_sep)* %read_quoted quote_char >close_quote;
   field = unquoted | quoted;
-  fields = (field col_sep)* field?;
-  file = (fields row_sep >new_row)* fields?;
+  # fields = (field col_sep)* field?;
+  # file = (fields row_sep >new_row)* fields?;
 
   # @see Ragel Guide: 6.3 Scanners
-  # main := |*
-  #   field col_sep;
-  #   field row_sep >new_row;
-  # *|;
+  # Remember that an unquoted field can be zero-length.
+  main := |*
+    field col_sep;
+    field row_sep >new_row;
+  *|;
 
-  Non-scanner version requires very large buffer.
-  main := file $/{
-    if (!NIL_P(field) || RARRAY_LEN(row)) {
-      rb_ary_push(row, field);
-      rb_yield(row);
-    }
-  };
+  # Non-scanner version requires very large buffer.
+  # main := file $/{
+  #   if (!NIL_P(field) || RARRAY_LEN(row)) {
+  #     rb_ary_push(row, field);
+  #     rb_yield(row);
+  #   }
+  # };
 }%%
 
 %% write data;
@@ -127,7 +137,8 @@ VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
   VALUE port, opts;
   VALUE row = rb_ary_new(), field = Qnil, bufsize = Qnil;
   int done = 0, unclosed_line = 0, buffer_size = 0, taint = 0;
-  int encoding_index = rb_enc_to_index(rb_default_external_encoding());
+  int internal_index = 0, external_index = rb_enc_to_index(rb_default_external_encoding());
+  rb_encoding *internal_encoding = NULL, *external_encoding = rb_default_external_encoding();
 
   VALUE option;
   char quote_char = '"', *col_sep = ",", *row_sep = "\r\n";
@@ -180,7 +191,43 @@ VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
 
   option = rb_hash_aref(opts, ID2SYM(rb_intern("encoding")));
   if (TYPE(option) == T_STRING) {
-    encoding_index = rb_enc_find_index(StringValueCStr(option));
+    // @see parse_mode_enc in Ruby's io.c
+    const char *string = StringValueCStr(option), *pointer;
+    char internal_encoding_name[ENCODING_MAXNAMELEN + 1];
+
+    pointer = strrchr(string, ':');
+    if (pointer) {
+      long len = (pointer++) - string;
+      if (len == 0 || len > ENCODING_MAXNAMELEN) {
+        internal_index = -1;
+      }
+      else {
+        memcpy(internal_encoding_name, string, len);
+        internal_encoding_name[len] = '\0';
+        string = internal_encoding_name;
+        internal_index = rb_enc_find_index(internal_encoding_name);
+      }
+    }
+    else {
+      internal_index = rb_enc_find_index(string);
+    }
+
+    if (internal_index >= 0) {
+      internal_encoding = rb_enc_from_index(internal_index);
+    }
+    else if (internal_index != -2) {
+      unsupported_encoding(string);
+    }
+
+    if (pointer) {
+      external_index = rb_enc_find_index(pointer);
+      if (external_index >= 0) {
+        external_encoding = rb_enc_from_index(external_index);
+      }
+      else {
+        unsupported_encoding(pointer);
+      }
+    }
   }
   else if (!NIL_P(option)) {
     rb_raise(rb_eArgError, ":encoding has to be a String");
@@ -236,7 +283,7 @@ VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
     }
     else {
       p = RSTRING_PTR(port);
-      len = RSTRING_LEN(port) + 1;
+      len = RSTRING_LEN(port);
       done = 1;
     }
 
@@ -246,7 +293,7 @@ VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
     }
     %% write exec;
 
-    // @todo
+    // @todo Use \0 as a sentinel value as in Lua CSV Ragel?
     // EOF actions don't work in Scanners. We'd need to add a sentinel value.
     // @see http://www.complang.org/pipermail/ragel-users/2007-May/001516.html
     // if (done && (!NIL_P(field) || RARRAY_LEN(row))) {
@@ -295,6 +342,6 @@ void Init_fastcsv() {
 
   mModule = rb_define_module("FastCSV");
   rb_define_attr(rb_singleton_class(mModule), "buffer_size", 1, 1);
-  rb_define_singleton_method(mModule, "scan", fastcsv, -1);
+  rb_define_singleton_method(mModule, "raw_parse", fastcsv, -1);
   rb_eParseError = rb_define_class_under(mModule, "ParseError", rb_eStandardError);
 }

@@ -16,15 +16,24 @@
 // Ragel help.
 // https://www.mail-archive.com/ragel-users@complang.org/
 
+# define ASSOCIATE_INDEX \
+  if (internal_encoding) { \
+    rb_enc_associate_index(field, rb_enc_to_index(internal_encoding)); \
+    field = rb_str_encode(field, rb_enc_from_encoding(external_encoding), 0, Qnil); \
+  } \
+  else { \
+    rb_enc_associate_index(field, rb_enc_to_index(external_encoding)); \
+  }
+
 static VALUE mModule, rb_eParseError;
 static ID s_read, s_to_str;
 
 
-#line 117 "ext/fastcsv/fastcsv.rl"
+#line 127 "ext/fastcsv/fastcsv.rl"
 
 
 
-#line 28 "ext/fastcsv/fastcsv.c"
+#line 37 "ext/fastcsv/fastcsv.c"
 static const char _fastcsv_actions[] = {
 	0, 1, 0, 1, 1, 1, 7, 1, 
 	8, 1, 11, 2, 0, 10, 2, 4, 
@@ -87,7 +96,7 @@ static const int fastcsv_error = 0;
 static const int fastcsv_en_main = 4;
 
 
-#line 120 "ext/fastcsv/fastcsv.rl"
+#line 130 "ext/fastcsv/fastcsv.rl"
 
 #define BUFSIZE 16384
 
@@ -98,7 +107,8 @@ VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
   VALUE port, opts;
   VALUE row = rb_ary_new(), field = Qnil, bufsize = Qnil;
   int done = 0, unclosed_line = 0, buffer_size = 0, taint = 0;
-  int encoding_index = rb_enc_to_index(rb_default_external_encoding());
+  int internal_index = 0, external_index = rb_enc_to_index(rb_default_external_encoding());
+  rb_encoding *internal_encoding = NULL, *external_encoding = rb_default_external_encoding();
 
   VALUE option;
   char quote_char = '"', *col_sep = ",", *row_sep = "\r\n";
@@ -151,7 +161,43 @@ VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
 
   option = rb_hash_aref(opts, ID2SYM(rb_intern("encoding")));
   if (TYPE(option) == T_STRING) {
-    encoding_index = rb_enc_find_index(StringValueCStr(option));
+    // @see parse_mode_enc in Ruby's io.c
+    const char *string = StringValueCStr(option), *pointer;
+    char internal_encoding_name[ENCODING_MAXNAMELEN + 1];
+
+    pointer = strrchr(string, ':');
+    if (pointer) {
+      long len = (pointer++) - string;
+      if (len == 0 || len > ENCODING_MAXNAMELEN) {
+        internal_index = -1;
+      }
+      else {
+        memcpy(internal_encoding_name, string, len);
+        internal_encoding_name[len] = '\0';
+        string = internal_encoding_name;
+        internal_index = rb_enc_find_index(internal_encoding_name);
+      }
+    }
+    else {
+      internal_index = rb_enc_find_index(string);
+    }
+
+    if (internal_index >= 0) {
+      internal_encoding = rb_enc_from_index(internal_index);
+    }
+    else if (internal_index != -2) {
+      unsupported_encoding(string);
+    }
+
+    if (pointer) {
+      external_index = rb_enc_find_index(pointer);
+      if (external_index >= 0) {
+        external_encoding = rb_enc_from_index(external_index);
+      }
+      else {
+        unsupported_encoding(pointer);
+      }
+    }
   }
   else if (!NIL_P(option)) {
     rb_raise(rb_eArgError, ":encoding has to be a String");
@@ -170,7 +216,7 @@ VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
   }
 
   
-#line 174 "ext/fastcsv/fastcsv.c"
+#line 220 "ext/fastcsv/fastcsv.c"
 	{
 	cs = fastcsv_start;
 	ts = 0;
@@ -178,7 +224,7 @@ VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
 	act = 0;
 	}
 
-#line 202 "ext/fastcsv/fastcsv.rl"
+#line 249 "ext/fastcsv/fastcsv.rl"
 
   while (!done) {
     VALUE str;
@@ -216,7 +262,7 @@ VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
     }
     else {
       p = RSTRING_PTR(port);
-      len = RSTRING_LEN(port) + 1;
+      len = RSTRING_LEN(port);
       done = 1;
     }
 
@@ -225,7 +271,7 @@ VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
       eof = pe;
     }
     
-#line 229 "ext/fastcsv/fastcsv.c"
+#line 275 "ext/fastcsv/fastcsv.c"
 	{
 	int _klen;
 	unsigned int _trans;
@@ -246,7 +292,7 @@ _resume:
 #line 1 "NONE"
 	{ts = p;}
 	break;
-#line 250 "ext/fastcsv/fastcsv.c"
+#line 296 "ext/fastcsv/fastcsv.c"
 		}
 	}
 
@@ -312,25 +358,25 @@ _eof_trans:
 		switch ( *_acts++ )
 		{
 	case 0:
-#line 23 "ext/fastcsv/fastcsv.rl"
+#line 32 "ext/fastcsv/fastcsv.rl"
 	{
     curline++;
   }
 	break;
 	case 1:
-#line 27 "ext/fastcsv/fastcsv.rl"
+#line 36 "ext/fastcsv/fastcsv.rl"
 	{
     unclosed_line = curline;
   }
 	break;
 	case 2:
-#line 31 "ext/fastcsv/fastcsv.rl"
+#line 40 "ext/fastcsv/fastcsv.rl"
 	{
     unclosed_line = 0;
   }
 	break;
 	case 3:
-#line 35 "ext/fastcsv/fastcsv.rl"
+#line 44 "ext/fastcsv/fastcsv.rl"
 	{
     if (p == ts) {
       // Unquoted empty fields are nil, not "", in Ruby.
@@ -338,19 +384,19 @@ _eof_trans:
     }
     else if (p > ts) {
       field = rb_str_new(ts, p - ts);
-      rb_enc_associate_index(field, encoding_index);
+      ASSOCIATE_INDEX;
     }
   }
 	break;
 	case 4:
-#line 46 "ext/fastcsv/fastcsv.rl"
+#line 55 "ext/fastcsv/fastcsv.rl"
 	{
     if (p == ts) {
       field = rb_str_new2("");
-      rb_enc_associate_index(field, encoding_index);
+      ASSOCIATE_INDEX;
     }
     else if (p > ts) {
-      // Operating on ts in-place produces odd behavior.
+      // Operating on ts in-place produces odd behavior, FYI.
       char *copy = ALLOC_N(char, p - ts);
       memcpy(copy, ts, p - ts);
 
@@ -370,7 +416,7 @@ _eof_trans:
       }
 
       field = rb_str_new(copy, writer - copy);
-      rb_enc_associate_index(field, encoding_index);
+      ASSOCIATE_INDEX;
 
       if (copy != NULL) {
         free(copy);
@@ -379,14 +425,14 @@ _eof_trans:
   }
 	break;
 	case 5:
-#line 80 "ext/fastcsv/fastcsv.rl"
+#line 89 "ext/fastcsv/fastcsv.rl"
 	{
     rb_ary_push(row, field);
     field = Qnil;
   }
 	break;
 	case 6:
-#line 85 "ext/fastcsv/fastcsv.rl"
+#line 94 "ext/fastcsv/fastcsv.rl"
 	{
     if (!NIL_P(field) || RARRAY_LEN(row)) { // same as new_field
       rb_ary_push(row, field);
@@ -398,18 +444,18 @@ _eof_trans:
   }
 	break;
 	case 9:
-#line 106 "ext/fastcsv/fastcsv.rl"
+#line 116 "ext/fastcsv/fastcsv.rl"
 	{te = p+1;}
 	break;
 	case 10:
-#line 107 "ext/fastcsv/fastcsv.rl"
+#line 117 "ext/fastcsv/fastcsv.rl"
 	{te = p+1;}
 	break;
 	case 11:
-#line 107 "ext/fastcsv/fastcsv.rl"
+#line 117 "ext/fastcsv/fastcsv.rl"
 	{te = p;p--;}
 	break;
-#line 413 "ext/fastcsv/fastcsv.c"
+#line 459 "ext/fastcsv/fastcsv.c"
 		}
 	}
 
@@ -422,7 +468,7 @@ _again:
 #line 1 "NONE"
 	{ts = 0;}
 	break;
-#line 426 "ext/fastcsv/fastcsv.c"
+#line 472 "ext/fastcsv/fastcsv.c"
 		}
 	}
 
@@ -442,9 +488,9 @@ _again:
 	_out: {}
 	}
 
-#line 248 "ext/fastcsv/fastcsv.rl"
+#line 295 "ext/fastcsv/fastcsv.rl"
 
-    // @todo
+    // @todo Use \0 as a sentinel value as in Lua CSV Ragel?
     // EOF actions don't work in Scanners. We'd need to add a sentinel value.
     // @see http://www.complang.org/pipermail/ragel-users/2007-May/001516.html
     // if (done && (!NIL_P(field) || RARRAY_LEN(row))) {
@@ -493,6 +539,6 @@ void Init_fastcsv() {
 
   mModule = rb_define_module("FastCSV");
   rb_define_attr(rb_singleton_class(mModule), "buffer_size", 1, 1);
-  rb_define_singleton_method(mModule, "scan", fastcsv, -1);
+  rb_define_singleton_method(mModule, "raw_parse", fastcsv, -1);
   rb_eParseError = rb_define_class_under(mModule, "ParseError", rb_eStandardError);
 }
