@@ -19,8 +19,13 @@ if (enc2 != NULL) { \
   field = rb_str_encode(field, rb_enc_from_encoding(enc), 0, Qnil); \
 }
 
-static VALUE mClass, eError;
-static ID s_read, s_to_str, s_internal_encoding, s_external_encoding, s_string, s_encoding;
+static VALUE cClass, cParser, eError;
+static ID s_read, s_row;
+
+// @see https://github.com/nofxx/georuby_c/blob/b3b91fd90980d7c295ac8f6012d89878ea7cd569/ext/types.h#L22
+typedef struct {
+  char *start;
+} Data;
 
 %%{
   machine raw_parse;
@@ -88,7 +93,18 @@ static ID s_read, s_to_str, s_internal_encoding, s_external_encoding, s_string, 
     field = Qnil;
   }
 
+  action mark_row {
+    d->start = p;
+  }
+
   action new_row {
+    if (d->start == 0 || p == d->start) {
+      rb_ivar_set(self, s_row, rb_str_new2(""));
+    }
+    else if (p > d->start) {
+      rb_ivar_set(self, s_row, rb_str_new(d->start, p - d->start));
+    }
+
     if (!NIL_P(field) || RARRAY_LEN(row)) { // same as new_field
       rb_ary_push(row, field);
       field = Qnil;
@@ -99,15 +115,23 @@ static ID s_read, s_to_str, s_internal_encoding, s_external_encoding, s_string, 
   }
 
   action last_row {
+    if (d->start == 0 || p == d->start) {
+      rb_ivar_set(self, s_row, rb_str_new2(""));
+    }
+    else if (p > d->start) {
+      rb_ivar_set(self, s_row, rb_str_new(d->start, p - d->start));
+    }
+
     if (!NIL_P(field) || RARRAY_LEN(row)) {
       rb_ary_push(row, field);
     }
+
     if (RARRAY_LEN(row)) {
       rb_yield(row);
     }
   }
 
-  EOF = 0 >last_row;
+  EOF = 0;
   quote_char = '"';
   col_sep = ',' >new_field;
   row_sep = ('\r' '\n'? | '\n') @new_line;
@@ -118,9 +142,9 @@ static ID s_read, s_to_str, s_internal_encoding, s_external_encoding, s_string, 
   # @see Ragel Guide: 6.3 Scanners
   # An unquoted field can be zero-length.
   main := |*
-    field col_sep EOF?;
-    field row_sep >new_row EOF?;
-    field EOF;
+    field col_sep;
+    field row_sep >new_row %mark_row;
+    field EOF >last_row;
   *|;
 }%%
 
@@ -130,9 +154,7 @@ static ID s_read, s_to_str, s_internal_encoding, s_external_encoding, s_string, 
 #define BUFSIZE 16384
 
 // @see http://rxr.whitequark.org/mri/source/io.c#4845
-static void
-rb_io_ext_int_to_encs(rb_encoding *ext, rb_encoding *intern, rb_encoding **enc, rb_encoding **enc2, int fmode)
-{
+static void rb_io_ext_int_to_encs(rb_encoding *ext, rb_encoding *intern, rb_encoding **enc, rb_encoding **enc2, int fmode) {
   int default_ext = 0;
 
   if (ext == NULL) {
@@ -157,7 +179,7 @@ rb_io_ext_int_to_encs(rb_encoding *ext, rb_encoding *intern, rb_encoding **enc, 
   }
 }
 
-VALUE raw_parse(int argc, VALUE *argv, VALUE self) {
+static VALUE raw_parse(int argc, VALUE *argv, VALUE self) {
   int cs, act, have = 0, curline = 1, io = 0;
   char *ts = 0, *te = 0, *buf = 0, *eof = 0;
 
@@ -167,6 +189,9 @@ VALUE raw_parse(int argc, VALUE *argv, VALUE self) {
   rb_encoding *enc = NULL, *enc2 = NULL, *encoding = NULL;
   VALUE r_encoding;
 
+  Data *d;
+  Data_Get_Struct(self, Data, d);
+
   VALUE option;
   char quote_char = '"';
 
@@ -174,8 +199,8 @@ VALUE raw_parse(int argc, VALUE *argv, VALUE self) {
   taint = OBJ_TAINTED(port);
   io = rb_respond_to(port, s_read);
   if (!io) {
-    if (rb_respond_to(port, s_to_str)) {
-      port = rb_funcall(port, s_to_str, 0);
+    if (rb_respond_to(port, rb_intern("to_str"))) {
+      port = rb_funcall(port, rb_intern("to_str"), 0);
       StringValue(port);
     }
     else {
@@ -264,17 +289,17 @@ VALUE raw_parse(int argc, VALUE *argv, VALUE self) {
 
   // @see CSV#raw_encoding
   // @see https://github.com/ruby/ruby/blob/ab337e61ecb5f42384ba7d710c36faf96a454e5c/lib/csv.rb#L2290
-  if (rb_respond_to(port, s_internal_encoding)) {
-    r_encoding = rb_funcall(port, s_internal_encoding, 0);
+  if (rb_respond_to(port, rb_intern("internal_encoding"))) {
+    r_encoding = rb_funcall(port, rb_intern("internal_encoding"), 0);
     if (NIL_P(r_encoding)) {
-      r_encoding = rb_funcall(port, s_external_encoding, 0);
+      r_encoding = rb_funcall(port, rb_intern("external_encoding"), 0);
     }
   }
-  else if (rb_respond_to(port, s_string)) {
-    r_encoding = rb_funcall(rb_funcall(port, s_string, 0), s_encoding, 0);
+  else if (rb_respond_to(port, rb_intern("string"))) {
+    r_encoding = rb_funcall(rb_funcall(port, rb_intern("string"), 0), rb_intern("encoding"), 0);
   }
-  else if (rb_respond_to(port, s_encoding)) {
-    r_encoding = rb_funcall(port, s_encoding, 0);
+  else if (rb_respond_to(port, rb_intern("encoding"))) {
+    r_encoding = rb_funcall(port, rb_intern("encoding"), 0);
   }
   else {
     r_encoding = rb_enc_from_encoding(rb_ascii8bit_encoding());
@@ -304,6 +329,10 @@ VALUE raw_parse(int argc, VALUE *argv, VALUE self) {
     bufsize = rb_ivar_get(self, rb_intern("@buffer_size"));
     if (!NIL_P(bufsize)) {
       buffer_size = NUM2INT(bufsize);
+      // buffer_size = 0 can cause segmentation faults.
+      if (buffer_size == 0) {
+        buffer_size = BUFSIZE;
+      }
     }
   }
 
@@ -316,26 +345,32 @@ VALUE raw_parse(int argc, VALUE *argv, VALUE self) {
   while (!done) {
     VALUE str;
     char *p, *pe;
-    int len, space = buffer_size - have, tokstart_diff, tokend_diff;
+    int len, space = buffer_size - have, tokstart_diff, tokend_diff, start_diff;
 
     if (io) {
       if (space == 0) {
-         tokstart_diff = ts - buf;
-         tokend_diff = te - buf;
+        // Not moving d->start will cause intermittent segmentation faults.
+        tokstart_diff = ts - buf;
+        tokend_diff = te - buf;
+        start_diff = d->start - buf;
 
-         buffer_size += BUFSIZE;
-         REALLOC_N(buf, char, buffer_size);
+        buffer_size += BUFSIZE;
+        REALLOC_N(buf, char, buffer_size);
 
-         space = buffer_size - have;
+        space = buffer_size - have;
 
-         ts = buf + tokstart_diff;
-         te = buf + tokend_diff;
+        ts = buf + tokstart_diff;
+        te = buf + tokend_diff;
+        d->start = buf + start_diff;
       }
       p = buf + have;
 
+      // Reads "`length` bytes without any conversion (binary mode)."
+      // "The resulted string is always ASCII-8BIT encoding."
+      // @see http://www.ruby-doc.org/core-2.1.4/IO.html#method-i-read
       str = rb_funcall(port, s_read, 1, INT2FIX(space));
       if (NIL_P(str)) {
-        // StringIO#read returns nil for empty string.
+        // "`nil` means it met EOF at beginning," e.g. for `StringIO.new("")`.
         len = 0;
       }
       else {
@@ -343,6 +378,7 @@ VALUE raw_parse(int argc, VALUE *argv, VALUE self) {
         memcpy(p, StringValuePtr(str), len);
       }
 
+      // "The 1 to `length`-1 bytes string means it met EOF after reading the result."
       if (len < space) {
         // EOF actions don't work in scanners, so we add a sentinel value.
         // @see http://www.complang.org/pipermail/ragel-users/2007-May/001516.html
@@ -356,6 +392,10 @@ VALUE raw_parse(int argc, VALUE *argv, VALUE self) {
       len = RSTRING_LEN(port);
       p[len++] = 0;
       done = 1;
+    }
+
+    if (d->start == 0) {
+      d->start = p;
     }
 
     pe = p + len;
@@ -395,18 +435,30 @@ VALUE raw_parse(int argc, VALUE *argv, VALUE self) {
   return Qnil;
 }
 
+// @see https://github.com/ruby/ruby/blob/trunk/README.EXT#L616
+static VALUE allocate(VALUE class) {
+  // @see https://github.com/nofxx/georuby_c/blob/b3b91fd90980d7c295ac8f6012d89878ea7cd569/ext/line.c#L66
+  Data *d = ALLOC(Data);
+  d->start = 0;
+  // @see https://github.com/nofxx/georuby_c/blob/b3b91fd90980d7c295ac8f6012d89878ea7cd569/ext/point.h#L26
+  // rb_gc_mark(d->start) or rb_gc_mark(d) cause warning "passing argument 1 of ‘rb_gc_mark’ makes integer from pointer without a cast"
+  // free(d->start) causes error "pointer being freed was not allocated"
+  return Data_Wrap_Struct(class, NULL, free, d);
+}
+
+// @see http://tenderlovemaking.com/2009/12/18/writing-ruby-c-extensions-part-1.html
+// @see http://tenderlovemaking.com/2010/12/11/writing-ruby-c-extensions-part-2.html
 void Init_fastcsv() {
   s_read = rb_intern("read");
-  s_to_str = rb_intern("to_str");
-  s_internal_encoding = rb_intern("internal_encoding");
-  s_external_encoding = rb_intern("external_encoding");
-  s_string = rb_intern("string");
-  s_encoding = rb_intern("encoding");
+  s_row = rb_intern("@row");
 
-  mClass = rb_define_class("FastCSV", rb_const_get(rb_cObject, rb_intern("CSV")));
-  // https://github.com/ruby/ruby/blob/trunk/README.EXT#L427
-  // @see http://rxr.whitequark.org/mri/source/class.c#1580
-  rb_define_attr(rb_singleton_class(mClass), "buffer_size", 1, 1); // attr_accessor on singleton class
-  rb_define_singleton_method(mClass, "raw_parse", raw_parse, -1); // triggers int argc, VALUE *argv, VALUE self
-  eError = rb_define_class_under(mClass, "MalformedCSVError", rb_eRuntimeError);
+  cClass = rb_define_class("FastCSV", rb_const_get(rb_cObject, rb_intern("CSV"))); // class FastCSV < CSV
+  cParser = rb_define_class_under(cClass, "Parser", rb_cObject);                   //   class Parser
+  rb_define_alloc_func(cParser, allocate);                                         //
+  rb_define_method(cParser, "raw_parse", raw_parse, -1);                           //     def raw_parse(port, opts = nil); end
+  rb_define_attr(cParser, "row", 1, 0);                                            //     attr_reader :row
+  rb_define_attr(cParser, "buffer_size", 1, 1);                                    //     attr_accessor :buffer_size
+                                                                                   //   end
+  eError = rb_define_class_under(cClass, "MalformedCSVError", rb_eRuntimeError);   //   class MalformedCSVError < RuntimeError
+                                                                                   // end
 }

@@ -21,15 +21,20 @@ if (enc2 != NULL) { \
   field = rb_str_encode(field, rb_enc_from_encoding(enc), 0, Qnil); \
 }
 
-static VALUE mClass, eError;
-static ID s_read, s_to_str, s_internal_encoding, s_external_encoding, s_string, s_encoding;
+static VALUE cClass, cParser, eError;
+static ID s_read, s_row;
+
+// @see https://github.com/nofxx/georuby_c/blob/b3b91fd90980d7c295ac8f6012d89878ea7cd569/ext/types.h#L22
+typedef struct {
+  char *start;
+} Data;
 
 
-#line 125 "ext/fastcsv/fastcsv.rl"
+#line 152 "ext/fastcsv/fastcsv.rl"
 
 
 
-#line 33 "ext/fastcsv/fastcsv.c"
+#line 38 "ext/fastcsv/fastcsv.c"
 static const int raw_parse_start = 4;
 static const int raw_parse_first_final = 4;
 static const int raw_parse_error = 0;
@@ -37,15 +42,13 @@ static const int raw_parse_error = 0;
 static const int raw_parse_en_main = 4;
 
 
-#line 128 "ext/fastcsv/fastcsv.rl"
+#line 155 "ext/fastcsv/fastcsv.rl"
 
 // 16 kB
 #define BUFSIZE 16384
 
 // @see http://rxr.whitequark.org/mri/source/io.c#4845
-static void
-rb_io_ext_int_to_encs(rb_encoding *ext, rb_encoding *intern, rb_encoding **enc, rb_encoding **enc2, int fmode)
-{
+static void rb_io_ext_int_to_encs(rb_encoding *ext, rb_encoding *intern, rb_encoding **enc, rb_encoding **enc2, int fmode) {
   int default_ext = 0;
 
   if (ext == NULL) {
@@ -70,7 +73,7 @@ rb_io_ext_int_to_encs(rb_encoding *ext, rb_encoding *intern, rb_encoding **enc, 
   }
 }
 
-VALUE raw_parse(int argc, VALUE *argv, VALUE self) {
+static VALUE raw_parse(int argc, VALUE *argv, VALUE self) {
   int cs, act, have = 0, curline = 1, io = 0;
   char *ts = 0, *te = 0, *buf = 0, *eof = 0;
 
@@ -80,6 +83,9 @@ VALUE raw_parse(int argc, VALUE *argv, VALUE self) {
   rb_encoding *enc = NULL, *enc2 = NULL, *encoding = NULL;
   VALUE r_encoding;
 
+  Data *d;
+  Data_Get_Struct(self, Data, d);
+
   VALUE option;
   char quote_char = '"';
 
@@ -87,8 +93,8 @@ VALUE raw_parse(int argc, VALUE *argv, VALUE self) {
   taint = OBJ_TAINTED(port);
   io = rb_respond_to(port, s_read);
   if (!io) {
-    if (rb_respond_to(port, s_to_str)) {
-      port = rb_funcall(port, s_to_str, 0);
+    if (rb_respond_to(port, rb_intern("to_str"))) {
+      port = rb_funcall(port, rb_intern("to_str"), 0);
       StringValue(port);
     }
     else {
@@ -177,17 +183,17 @@ VALUE raw_parse(int argc, VALUE *argv, VALUE self) {
 
   // @see CSV#raw_encoding
   // @see https://github.com/ruby/ruby/blob/ab337e61ecb5f42384ba7d710c36faf96a454e5c/lib/csv.rb#L2290
-  if (rb_respond_to(port, s_internal_encoding)) {
-    r_encoding = rb_funcall(port, s_internal_encoding, 0);
+  if (rb_respond_to(port, rb_intern("internal_encoding"))) {
+    r_encoding = rb_funcall(port, rb_intern("internal_encoding"), 0);
     if (NIL_P(r_encoding)) {
-      r_encoding = rb_funcall(port, s_external_encoding, 0);
+      r_encoding = rb_funcall(port, rb_intern("external_encoding"), 0);
     }
   }
-  else if (rb_respond_to(port, s_string)) {
-    r_encoding = rb_funcall(rb_funcall(port, s_string, 0), s_encoding, 0);
+  else if (rb_respond_to(port, rb_intern("string"))) {
+    r_encoding = rb_funcall(rb_funcall(port, rb_intern("string"), 0), rb_intern("encoding"), 0);
   }
-  else if (rb_respond_to(port, s_encoding)) {
-    r_encoding = rb_funcall(port, s_encoding, 0);
+  else if (rb_respond_to(port, rb_intern("encoding"))) {
+    r_encoding = rb_funcall(port, rb_intern("encoding"), 0);
   }
   else {
     r_encoding = rb_enc_from_encoding(rb_ascii8bit_encoding());
@@ -217,6 +223,9 @@ VALUE raw_parse(int argc, VALUE *argv, VALUE self) {
     bufsize = rb_ivar_get(self, rb_intern("@buffer_size"));
     if (!NIL_P(bufsize)) {
       buffer_size = NUM2INT(bufsize);
+      if (buffer_size == 0) {
+        buffer_size = BUFSIZE;
+      }
     }
   }
 
@@ -225,7 +234,7 @@ VALUE raw_parse(int argc, VALUE *argv, VALUE self) {
   }
 
   
-#line 229 "ext/fastcsv/fastcsv.c"
+#line 238 "ext/fastcsv/fastcsv.c"
 	{
 	cs = raw_parse_start;
 	ts = 0;
@@ -233,31 +242,37 @@ VALUE raw_parse(int argc, VALUE *argv, VALUE self) {
 	act = 0;
 	}
 
-#line 315 "ext/fastcsv/fastcsv.rl"
+#line 346 "ext/fastcsv/fastcsv.rl"
 
   while (!done) {
     VALUE str;
     char *p, *pe;
-    int len, space = buffer_size - have, tokstart_diff, tokend_diff;
+    int len, space = buffer_size - have, tokstart_diff, tokend_diff, start_diff;
 
     if (io) {
       if (space == 0) {
-         tokstart_diff = ts - buf;
-         tokend_diff = te - buf;
+        // Not moving d->start will cause intermittent segmentation faults.
+        tokstart_diff = ts - buf;
+        tokend_diff = te - buf;
+        start_diff = d->start - buf;
 
-         buffer_size += BUFSIZE;
-         REALLOC_N(buf, char, buffer_size);
+        buffer_size += BUFSIZE;
+        REALLOC_N(buf, char, buffer_size);
 
-         space = buffer_size - have;
+        space = buffer_size - have;
 
-         ts = buf + tokstart_diff;
-         te = buf + tokend_diff;
+        ts = buf + tokstart_diff;
+        te = buf + tokend_diff;
+        d->start = buf + start_diff;
       }
       p = buf + have;
 
+      // Reads "`length` bytes without any conversion (binary mode)."
+      // "The resulted string is always ASCII-8BIT encoding."
+      // @see http://www.ruby-doc.org/core-2.1.4/IO.html#method-i-read
       str = rb_funcall(port, s_read, 1, INT2FIX(space));
       if (NIL_P(str)) {
-        // StringIO#read returns nil for empty string.
+        // "`nil` means it met EOF at beginning," e.g. for `StringIO.new("")`.
         len = 0;
       }
       else {
@@ -265,6 +280,7 @@ VALUE raw_parse(int argc, VALUE *argv, VALUE self) {
         memcpy(p, StringValuePtr(str), len);
       }
 
+      // "The 1 to `length`-1 bytes string means it met EOF after reading the result."
       if (len < space) {
         // EOF actions don't work in scanners, so we add a sentinel value.
         // @see http://www.complang.org/pipermail/ragel-users/2007-May/001516.html
@@ -280,9 +296,13 @@ VALUE raw_parse(int argc, VALUE *argv, VALUE self) {
       done = 1;
     }
 
+    if (d->start == 0) {
+      d->start = p;
+    }
+
     pe = p + len;
     
-#line 286 "ext/fastcsv/fastcsv.c"
+#line 306 "ext/fastcsv/fastcsv.c"
 	{
 	if ( p == pe )
 		goto _test_eof;
@@ -300,56 +320,70 @@ tr0:
 	}
 	}
 	goto st4;
-tr10:
-#line 101 "ext/fastcsv/fastcsv.rl"
+tr5:
+#line 45 "ext/fastcsv/fastcsv.rl"
 	{
+    if (p == ts) {
+      // Unquoted empty fields are nil, not "", in Ruby.
+      field = Qnil;
+    }
+    else if (p > ts) {
+      field = rb_enc_str_new(ts, p - ts, encoding);
+      ENCODE;
+    }
+  }
+#line 91 "ext/fastcsv/fastcsv.rl"
+	{
+    rb_ary_push(row, field);
+    field = Qnil;
+  }
+#line 148 "ext/fastcsv/fastcsv.rl"
+	{te = p+1;}
+	goto st4;
+tr10:
+#line 117 "ext/fastcsv/fastcsv.rl"
+	{
+    if (d) {
+      if (d->start <= 0 || p == d->start) {
+        rb_ivar_set(self, s_row, rb_str_new2(""));
+      }
+      else if (p > d->start) {
+        // @todo Calling rb_ivar_set occasional causes a segfault on the 2000 column spec
+        rb_ivar_set(self, s_row, rb_str_new(d->start, p - d->start));
+      }
+    }
+
     if (!NIL_P(field) || RARRAY_LEN(row)) {
       rb_ary_push(row, field);
     }
+
     if (RARRAY_LEN(row)) {
       rb_yield(row);
     }
   }
-#line 123 "ext/fastcsv/fastcsv.rl"
+#line 150 "ext/fastcsv/fastcsv.rl"
+	{te = p+1;}
+	goto st4;
+tr13:
+#line 91 "ext/fastcsv/fastcsv.rl"
+	{
+    rb_ary_push(row, field);
+    field = Qnil;
+  }
+#line 148 "ext/fastcsv/fastcsv.rl"
 	{te = p+1;}
 	goto st4;
 tr16:
-#line 123 "ext/fastcsv/fastcsv.rl"
+#line 150 "ext/fastcsv/fastcsv.rl"
 	{te = p;p--;}
 	goto st4;
 tr17:
-#line 122 "ext/fastcsv/fastcsv.rl"
-	{te = p;p--;}
-	goto st4;
-tr18:
-#line 101 "ext/fastcsv/fastcsv.rl"
+#line 96 "ext/fastcsv/fastcsv.rl"
 	{
-    if (!NIL_P(field) || RARRAY_LEN(row)) {
-      rb_ary_push(row, field);
-    }
-    if (RARRAY_LEN(row)) {
-      rb_yield(row);
-    }
+    d->start = p;
   }
-#line 122 "ext/fastcsv/fastcsv.rl"
-	{te = p+1;}
-	goto st4;
-tr20:
-#line 121 "ext/fastcsv/fastcsv.rl"
+#line 149 "ext/fastcsv/fastcsv.rl"
 	{te = p;p--;}
-	goto st4;
-tr21:
-#line 101 "ext/fastcsv/fastcsv.rl"
-	{
-    if (!NIL_P(field) || RARRAY_LEN(row)) {
-      rb_ary_push(row, field);
-    }
-    if (RARRAY_LEN(row)) {
-      rb_yield(row);
-    }
-  }
-#line 121 "ext/fastcsv/fastcsv.rl"
-	{te = p+1;}
 	goto st4;
 st4:
 #line 1 "NONE"
@@ -361,7 +395,7 @@ st4:
 case 4:
 #line 1 "NONE"
 	{ts = p;}
-#line 365 "ext/fastcsv/fastcsv.c"
+#line 399 "ext/fastcsv/fastcsv.c"
 	switch( (*p) ) {
 		case 0: goto tr14;
 		case 10: goto tr3;
@@ -385,7 +419,7 @@ case 1:
 tr2:
 #line 1 "NONE"
 	{te = p+1;}
-#line 40 "ext/fastcsv/fastcsv.rl"
+#line 45 "ext/fastcsv/fastcsv.rl"
 	{
     if (p == ts) {
       // Unquoted empty fields are nil, not "", in Ruby.
@@ -396,23 +430,34 @@ tr2:
       ENCODE;
     }
   }
-#line 101 "ext/fastcsv/fastcsv.rl"
+#line 117 "ext/fastcsv/fastcsv.rl"
 	{
+    if (d) {
+      if (d->start <= 0 || p == d->start) {
+        rb_ivar_set(self, s_row, rb_str_new2(""));
+      }
+      else if (p > d->start) {
+        // @todo Calling rb_ivar_set occasional causes a segfault on the 2000 column spec
+        rb_ivar_set(self, s_row, rb_str_new(d->start, p - d->start));
+      }
+    }
+
     if (!NIL_P(field) || RARRAY_LEN(row)) {
       rb_ary_push(row, field);
     }
+
     if (RARRAY_LEN(row)) {
       rb_yield(row);
     }
   }
-#line 123 "ext/fastcsv/fastcsv.rl"
+#line 150 "ext/fastcsv/fastcsv.rl"
 	{act = 3;}
 	goto st5;
 st5:
 	if ( ++p == pe )
 		goto _test_eof5;
 case 5:
-#line 416 "ext/fastcsv/fastcsv.c"
+#line 461 "ext/fastcsv/fastcsv.c"
 	switch( (*p) ) {
 		case 0: goto tr2;
 		case 10: goto tr3;
@@ -422,7 +467,7 @@ case 5:
 	}
 	goto st1;
 tr3:
-#line 40 "ext/fastcsv/fastcsv.rl"
+#line 45 "ext/fastcsv/fastcsv.rl"
 	{
     if (p == ts) {
       // Unquoted empty fields are nil, not "", in Ruby.
@@ -433,8 +478,15 @@ tr3:
       ENCODE;
     }
   }
-#line 91 "ext/fastcsv/fastcsv.rl"
+#line 100 "ext/fastcsv/fastcsv.rl"
 	{
+    if (d->start == 0 || p == d->start) {
+      rb_ivar_set(self, s_row, rb_str_new2(""));
+    }
+    else if (p > d->start) {
+      rb_ivar_set(self, s_row, rb_str_new(d->start, p - d->start));
+    }
+
     if (!NIL_P(field) || RARRAY_LEN(row)) { // same as new_field
       rb_ary_push(row, field);
       field = Qnil;
@@ -443,20 +495,27 @@ tr3:
     rb_yield(row);
     row = rb_ary_new();
   }
-#line 28 "ext/fastcsv/fastcsv.rl"
+#line 33 "ext/fastcsv/fastcsv.rl"
 	{
     curline++;
   }
 	goto st6;
-tr19:
-#line 28 "ext/fastcsv/fastcsv.rl"
+tr18:
+#line 33 "ext/fastcsv/fastcsv.rl"
 	{
     curline++;
   }
 	goto st6;
 tr11:
-#line 91 "ext/fastcsv/fastcsv.rl"
+#line 100 "ext/fastcsv/fastcsv.rl"
 	{
+    if (d->start == 0 || p == d->start) {
+      rb_ivar_set(self, s_row, rb_str_new2(""));
+    }
+    else if (p > d->start) {
+      rb_ivar_set(self, s_row, rb_str_new(d->start, p - d->start));
+    }
+
     if (!NIL_P(field) || RARRAY_LEN(row)) { // same as new_field
       rb_ary_push(row, field);
       field = Qnil;
@@ -465,7 +524,7 @@ tr11:
     rb_yield(row);
     row = rb_ary_new();
   }
-#line 28 "ext/fastcsv/fastcsv.rl"
+#line 33 "ext/fastcsv/fastcsv.rl"
 	{
     curline++;
   }
@@ -474,12 +533,10 @@ st6:
 	if ( ++p == pe )
 		goto _test_eof6;
 case 6:
-#line 478 "ext/fastcsv/fastcsv.c"
-	if ( (*p) == 0 )
-		goto tr18;
+#line 537 "ext/fastcsv/fastcsv.c"
 	goto tr17;
 tr4:
-#line 40 "ext/fastcsv/fastcsv.rl"
+#line 45 "ext/fastcsv/fastcsv.rl"
 	{
     if (p == ts) {
       // Unquoted empty fields are nil, not "", in Ruby.
@@ -490,8 +547,15 @@ tr4:
       ENCODE;
     }
   }
-#line 91 "ext/fastcsv/fastcsv.rl"
+#line 100 "ext/fastcsv/fastcsv.rl"
 	{
+    if (d->start == 0 || p == d->start) {
+      rb_ivar_set(self, s_row, rb_str_new2(""));
+    }
+    else if (p > d->start) {
+      rb_ivar_set(self, s_row, rb_str_new(d->start, p - d->start));
+    }
+
     if (!NIL_P(field) || RARRAY_LEN(row)) { // same as new_field
       rb_ary_push(row, field);
       field = Qnil;
@@ -500,14 +564,21 @@ tr4:
     rb_yield(row);
     row = rb_ary_new();
   }
-#line 28 "ext/fastcsv/fastcsv.rl"
+#line 33 "ext/fastcsv/fastcsv.rl"
 	{
     curline++;
   }
 	goto st7;
 tr12:
-#line 91 "ext/fastcsv/fastcsv.rl"
+#line 100 "ext/fastcsv/fastcsv.rl"
 	{
+    if (d->start == 0 || p == d->start) {
+      rb_ivar_set(self, s_row, rb_str_new2(""));
+    }
+    else if (p > d->start) {
+      rb_ivar_set(self, s_row, rb_str_new(d->start, p - d->start));
+    }
+
     if (!NIL_P(field) || RARRAY_LEN(row)) { // same as new_field
       rb_ary_push(row, field);
       field = Qnil;
@@ -516,7 +587,7 @@ tr12:
     rb_yield(row);
     row = rb_ary_new();
   }
-#line 28 "ext/fastcsv/fastcsv.rl"
+#line 33 "ext/fastcsv/fastcsv.rl"
 	{
     curline++;
   }
@@ -525,14 +596,14 @@ st7:
 	if ( ++p == pe )
 		goto _test_eof7;
 case 7:
-#line 529 "ext/fastcsv/fastcsv.c"
-	switch( (*p) ) {
-		case 0: goto tr18;
-		case 10: goto tr19;
-	}
+#line 600 "ext/fastcsv/fastcsv.c"
+	if ( (*p) == 10 )
+		goto tr18;
 	goto tr17;
-tr5:
-#line 40 "ext/fastcsv/fastcsv.rl"
+tr14:
+#line 1 "NONE"
+	{te = p+1;}
+#line 45 "ext/fastcsv/fastcsv.rl"
 	{
     if (p == ts) {
       // Unquoted empty fields are nil, not "", in Ruby.
@@ -543,58 +614,34 @@ tr5:
       ENCODE;
     }
   }
-#line 86 "ext/fastcsv/fastcsv.rl"
+#line 117 "ext/fastcsv/fastcsv.rl"
 	{
-    rb_ary_push(row, field);
-    field = Qnil;
+    if (d) {
+      if (d->start <= 0 || p == d->start) {
+        rb_ivar_set(self, s_row, rb_str_new2(""));
+      }
+      else if (p > d->start) {
+        // @todo Calling rb_ivar_set occasional causes a segfault on the 2000 column spec
+        rb_ivar_set(self, s_row, rb_str_new(d->start, p - d->start));
+      }
+    }
+
+    if (!NIL_P(field) || RARRAY_LEN(row)) {
+      rb_ary_push(row, field);
+    }
+
+    if (RARRAY_LEN(row)) {
+      rb_yield(row);
+    }
   }
-	goto st8;
-tr13:
-#line 86 "ext/fastcsv/fastcsv.rl"
-	{
-    rb_ary_push(row, field);
-    field = Qnil;
-  }
+#line 150 "ext/fastcsv/fastcsv.rl"
+	{act = 3;}
 	goto st8;
 st8:
 	if ( ++p == pe )
 		goto _test_eof8;
 case 8:
-#line 564 "ext/fastcsv/fastcsv.c"
-	if ( (*p) == 0 )
-		goto tr21;
-	goto tr20;
-tr14:
-#line 1 "NONE"
-	{te = p+1;}
-#line 101 "ext/fastcsv/fastcsv.rl"
-	{
-    if (!NIL_P(field) || RARRAY_LEN(row)) {
-      rb_ary_push(row, field);
-    }
-    if (RARRAY_LEN(row)) {
-      rb_yield(row);
-    }
-  }
-#line 40 "ext/fastcsv/fastcsv.rl"
-	{
-    if (p == ts) {
-      // Unquoted empty fields are nil, not "", in Ruby.
-      field = Qnil;
-    }
-    else if (p > ts) {
-      field = rb_enc_str_new(ts, p - ts, encoding);
-      ENCODE;
-    }
-  }
-#line 123 "ext/fastcsv/fastcsv.rl"
-	{act = 3;}
-	goto st9;
-st9:
-	if ( ++p == pe )
-		goto _test_eof9;
-case 9:
-#line 598 "ext/fastcsv/fastcsv.c"
+#line 645 "ext/fastcsv/fastcsv.c"
 	switch( (*p) ) {
 		case 10: goto tr16;
 		case 13: goto tr16;
@@ -603,13 +650,13 @@ case 9:
 	}
 	goto st1;
 tr8:
-#line 28 "ext/fastcsv/fastcsv.rl"
+#line 33 "ext/fastcsv/fastcsv.rl"
 	{
     curline++;
   }
 	goto st2;
 tr15:
-#line 32 "ext/fastcsv/fastcsv.rl"
+#line 37 "ext/fastcsv/fastcsv.rl"
 	{
     unclosed_line = curline;
   }
@@ -618,7 +665,7 @@ st2:
 	if ( ++p == pe )
 		goto _test_eof2;
 case 2:
-#line 622 "ext/fastcsv/fastcsv.c"
+#line 669 "ext/fastcsv/fastcsv.c"
 	switch( (*p) ) {
 		case 0: goto st0;
 		case 10: goto tr8;
@@ -630,7 +677,7 @@ st0:
 cs = 0;
 	goto _out;
 tr9:
-#line 51 "ext/fastcsv/fastcsv.rl"
+#line 56 "ext/fastcsv/fastcsv.rl"
 	{
     if (p == ts) {
       field = rb_enc_str_new("", 0, encoding);
@@ -665,7 +712,7 @@ tr9:
       }
     }
   }
-#line 36 "ext/fastcsv/fastcsv.rl"
+#line 41 "ext/fastcsv/fastcsv.rl"
 	{
     unclosed_line = 0;
   }
@@ -674,7 +721,7 @@ st3:
 	if ( ++p == pe )
 		goto _test_eof3;
 case 3:
-#line 678 "ext/fastcsv/fastcsv.c"
+#line 725 "ext/fastcsv/fastcsv.c"
 	switch( (*p) ) {
 		case 0: goto tr10;
 		case 10: goto tr11;
@@ -690,7 +737,6 @@ case 3:
 	_test_eof6: cs = 6; goto _test_eof; 
 	_test_eof7: cs = 7; goto _test_eof; 
 	_test_eof8: cs = 8; goto _test_eof; 
-	_test_eof9: cs = 9; goto _test_eof; 
 	_test_eof2: cs = 2; goto _test_eof; 
 	_test_eof3: cs = 3; goto _test_eof; 
 
@@ -702,15 +748,14 @@ case 3:
 	case 5: goto tr16;
 	case 6: goto tr17;
 	case 7: goto tr17;
-	case 8: goto tr20;
-	case 9: goto tr16;
+	case 8: goto tr16;
 	}
 	}
 
 	_out: {}
 	}
 
-#line 363 "ext/fastcsv/fastcsv.rl"
+#line 405 "ext/fastcsv/fastcsv.rl"
 
     if (done && cs < raw_parse_first_final) {
       if (buf != NULL) {
@@ -746,18 +791,30 @@ case 3:
   return Qnil;
 }
 
+// @see https://github.com/ruby/ruby/blob/trunk/README.EXT#L616
+static VALUE allocate(VALUE class) {
+  // @see https://github.com/nofxx/georuby_c/blob/b3b91fd90980d7c295ac8f6012d89878ea7cd569/ext/line.c#L66
+  Data *d = ALLOC(Data);
+  d->start = 0;
+  // @see https://github.com/nofxx/georuby_c/blob/b3b91fd90980d7c295ac8f6012d89878ea7cd569/ext/point.h#L26
+  // rb_gc_mark(d->start) or rb_gc_mark(d) cause warning "passing argument 1 of ‘rb_gc_mark’ makes integer from pointer without a cast"
+  // free(d->start) causes error "pointer being freed was not allocated"
+  return Data_Wrap_Struct(class, NULL, free, d);
+}
+
+// @see http://tenderlovemaking.com/2009/12/18/writing-ruby-c-extensions-part-1.html
+// @see http://tenderlovemaking.com/2010/12/11/writing-ruby-c-extensions-part-2.html
 void Init_fastcsv() {
   s_read = rb_intern("read");
-  s_to_str = rb_intern("to_str");
-  s_internal_encoding = rb_intern("internal_encoding");
-  s_external_encoding = rb_intern("external_encoding");
-  s_string = rb_intern("string");
-  s_encoding = rb_intern("encoding");
+  s_row = rb_intern("@row");
 
-  mClass = rb_define_class("FastCSV", rb_const_get(rb_cObject, rb_intern("CSV")));
-  // https://github.com/ruby/ruby/blob/trunk/README.EXT#L427
-  // @see http://rxr.whitequark.org/mri/source/class.c#1580
-  rb_define_attr(rb_singleton_class(mClass), "buffer_size", 1, 1); // attr_accessor on singleton class
-  rb_define_singleton_method(mClass, "raw_parse", raw_parse, -1); // triggers int argc, VALUE *argv, VALUE self
-  eError = rb_define_class_under(mClass, "MalformedCSVError", rb_eRuntimeError);
+  cClass = rb_define_class("FastCSV", rb_const_get(rb_cObject, rb_intern("CSV"))); // class FastCSV < CSV
+  cParser = rb_define_class_under(cClass, "Parser", rb_cObject);                   //   class Parser
+  rb_define_alloc_func(cParser, allocate);                                         //
+  rb_define_method(cParser, "raw_parse", raw_parse, -1);                           //     def raw_parse(port, opts = nil); end
+  rb_define_attr(cParser, "row", 1, 0);                                            //     attr_reader :row
+  rb_define_attr(cParser, "buffer_size", 1, 1);                                    //     attr_accessor :buffer_size
+                                                                                   //   end
+  eError = rb_define_class_under(cClass, "MalformedCSVError", rb_eRuntimeError);   //   class MalformedCSVError < RuntimeError
+                                                                                   // end
 }

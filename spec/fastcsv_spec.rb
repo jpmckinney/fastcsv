@@ -1,7 +1,5 @@
 require 'spec_helper'
 
-require 'csv'
-
 RSpec.shared_examples 'a CSV parser' do
   let :simple do
     "foo\nbar\nbaz"
@@ -61,7 +59,6 @@ RSpec.shared_examples 'a CSV parser' do
     %('foo','bar','baz'),
 
     # Buffers.
-    "01234567890" * 2_000, # 20,000 > BUFSIZE
     "0123456789," * 2_000,
 
     # Uneven rows.
@@ -74,6 +71,16 @@ RSpec.shared_examples 'a CSV parser' do
     it "should parse: #{csv.inspect.gsub('\"', '"')}" do
       expect(parse(csv)).to eq(CSV.parse(csv))
     end
+  end
+
+  # This has caused segmentation faults in the StringIO context in the past, so
+  # we separate it out so that it's easier to special case this spec. The fault
+  # seems to occur less frequently when the spec is run in isolation. The
+  # "TypeError: no implicit conversion from nil to integer" exception after a
+  # fault is related to RSpec, not the fault.
+  it "should parse long rows" do
+    csv = "01234567890" * 2_000 # 20,000 > BUFSIZE
+    expect(parse(csv)).to eq(CSV.parse(csv))
   end
 
   [
@@ -150,16 +157,21 @@ RSpec.shared_examples 'a CSV parser' do
   end
 
   context 'when setting a buffer size' do
-    it 'should allow nil' do
-      FastCSV.buffer_size = nil
-      expect(parse(simple)).to eq(CSV.parse(simple))
-      FastCSV.buffer_size = nil
+    def parse_with_buffer_size(csv, buffer_size)
+      parser = FastCSV::Parser.new
+      parser.buffer_size = buffer_size
+      rows = parse(csv, nil, parser)
+      parser.buffer_size = nil
+      rows
     end
 
+    it 'should allow nil' do
+      expect(parse_with_buffer_size(simple, nil)).to eq(CSV.parse(simple))
+    end
+
+    # If buffer_size is actually set to 0, it can cause segmentation faults.
     it 'should allow zero' do
-      FastCSV.buffer_size = 0
-      expect(parse(simple)).to eq(CSV.parse(simple))
-      FastCSV.buffer_size = nil
+      expect(parse_with_buffer_size(simple, 0)).to eq(CSV.parse(simple))
     end
   end
 end
@@ -204,9 +216,9 @@ end
 
 RSpec.describe FastCSV do
   context "with String" do
-    def parse(csv, options = nil)
+    def parse(csv, options = nil, parser = FastCSV)
       rows = []
-      FastCSV.raw_parse(csv, options){|row| rows << row}
+      parser.raw_parse(csv, options){|row| rows << row}
       rows
     end
 
@@ -217,16 +229,17 @@ RSpec.describe FastCSV do
     include_examples 'a CSV parser'
 
     it 'should not raise an error on negative buffer size' do
-      FastCSV.buffer_size = -1
-      expect{parse(simple)}.to_not raise_error
-      FastCSV.buffer_size = nil
+      parser = FastCSV::Parser.new
+      parser.buffer_size = -1
+      expect{parse(simple, nil, parser)}.to_not raise_error
+      parser.buffer_size = nil
     end
   end
 
   context "with StringIO" do
-    def parse(csv, options = nil)
+    def parse(csv, options = nil, parser = FastCSV)
       rows = []
-      FastCSV.raw_parse(StringIO.new(csv), options){|row| rows << row}
+      parser.raw_parse(StringIO.new(csv), options){|row| rows << row}
       rows
     end
 
@@ -237,9 +250,10 @@ RSpec.describe FastCSV do
     include_examples 'a CSV parser'
 
     it 'should raise an error on negative buffer size' do
-      FastCSV.buffer_size = -1
-      expect{parse(simple)}.to raise_error(NoMemoryError)
-      FastCSV.buffer_size = nil
+      parser = FastCSV::Parser.new
+      parser.buffer_size = -1
+      expect{parse(simple, nil, parser)}.to raise_error(NoMemoryError)
+      parser.buffer_size = nil
     end
   end
 
@@ -262,6 +276,29 @@ RSpec.describe FastCSV do
   context 'when initializing' do
     it 'should raise an error if the input is not a String or IO' do
       expect{FastCSV.raw_parse(nil)}.to raise_error(ArgumentError, 'data has to respond to #read or #to_str')
+    end
+  end
+
+  describe '#row' do
+    [
+      "",
+      "\n",
+      "\n\n",
+      "a,b,",
+      "a,b,\n",
+      "a,b,\nx,y,\n",
+      "a,b,c",
+      "a,b,c\n",
+      "a,b,c\nx,y,z\n",
+    ].each do |csv|
+      it "should return the current row for: #{csv.inspect.gsub('\"', '"')}" do
+        parser = FastCSV::Parser.new
+        rows = []
+        parser.raw_parse(csv) do |row|
+          rows << parser.row
+        end
+        expect(rows).to eq(CSV.parse(csv).map{|row| CSV.generate_line(row).chomp("\n")})
+      end
     end
   end
 end
