@@ -105,13 +105,13 @@ RSpec.shared_examples 'a CSV parser' do
   ].each do |csv,csv_error,fastcsv_error|
     it "should raise an error on: #{csv.inspect.gsub('\"', '"')}" do
       expect{CSV.parse(csv)}.to raise_error(CSV::MalformedCSVError, csv_error % 1)
-      expect{parse(csv)}.to raise_error(FastCSV::ParseError, fastcsv_error % 1)
+      expect{parse(csv)}.to raise_error(FastCSV::MalformedCSVError, fastcsv_error % 1)
     end
 
     it "should raise an error with the correct line number on: #{"\n#{csv}\n".inspect.gsub('\"', '"')}" do
       csv = "\n#{csv}\n"
       expect{CSV.parse(csv)}.to raise_error(CSV::MalformedCSVError, csv_error % 2)
-      expect{parse(csv)}.to raise_error(FastCSV::ParseError, fastcsv_error % 2)
+      expect{parse(csv)}.to raise_error(FastCSV::MalformedCSVError, fastcsv_error % 2)
     end
   end
 

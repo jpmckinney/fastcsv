@@ -21,7 +21,7 @@ if (enc2 != NULL) { \
   field = rb_str_encode(field, rb_enc_from_encoding(enc), 0, Qnil); \
 }
 
-static VALUE mModule, rb_eParseError;
+static VALUE mModule, eError;
 static ID s_read, s_to_str, s_internal_encoding, s_external_encoding, s_string, s_encoding;
 
 
@@ -30,11 +30,11 @@ static ID s_read, s_to_str, s_internal_encoding, s_external_encoding, s_string, 
 
 
 #line 33 "ext/fastcsv/fastcsv.c"
-static const int fastcsv_start = 4;
-static const int fastcsv_first_final = 4;
-static const int fastcsv_error = 0;
+static const int raw_parse_start = 4;
+static const int raw_parse_first_final = 4;
+static const int raw_parse_error = 0;
 
-static const int fastcsv_en_main = 4;
+static const int raw_parse_en_main = 4;
 
 
 #line 128 "ext/fastcsv/fastcsv.rl"
@@ -70,7 +70,7 @@ rb_io_ext_int_to_encs(rb_encoding *ext, rb_encoding *intern, rb_encoding **enc, 
   }
 }
 
-VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
+VALUE raw_parse(int argc, VALUE *argv, VALUE self) {
   int cs, act, have = 0, curline = 1, io = 0;
   char *ts = 0, *te = 0, *buf = 0, *eof = 0;
 
@@ -227,7 +227,7 @@ VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
   
 #line 229 "ext/fastcsv/fastcsv.c"
 	{
-	cs = fastcsv_start;
+	cs = raw_parse_start;
 	ts = 0;
 	te = 0;
 	act = 0;
@@ -712,19 +712,19 @@ case 3:
 
 #line 363 "ext/fastcsv/fastcsv.rl"
 
-    if (done && cs < fastcsv_first_final) {
+    if (done && cs < raw_parse_first_final) {
       if (buf != NULL) {
         free(buf);
       }
       if (unclosed_line) {
-        rb_raise(rb_eParseError, "Unclosed quoted field on line %d.", unclosed_line);
+        rb_raise(eError, "Unclosed quoted field on line %d.", unclosed_line);
       }
       // Ruby raises different errors for illegal quoting, depending on whether
       // a quoted string is followed by a string ("Unclosed quoted field on line
       // %d.") or by a string ending in a quote ("Missing or stray quote in line
       // %d"). These precisions are kind of bogus, but we can try using $!.
       else {
-        rb_raise(rb_eParseError, "Illegal quoting in line %d.", curline);
+        rb_raise(eError, "Illegal quoting in line %d.", curline);
       }
     }
 
@@ -756,6 +756,6 @@ void Init_fastcsv() {
 
   mModule = rb_define_module("FastCSV");
   rb_define_attr(rb_singleton_class(mModule), "buffer_size", 1, 1);
-  rb_define_singleton_method(mModule, "raw_parse", fastcsv, -1);
-  rb_eParseError = rb_define_class_under(mModule, "ParseError", rb_eStandardError);
+  rb_define_singleton_method(mModule, "raw_parse", raw_parse, -1);
+  eError = rb_define_class_under(mModule, "MalformedCSVError", rb_eRuntimeError);
 }
