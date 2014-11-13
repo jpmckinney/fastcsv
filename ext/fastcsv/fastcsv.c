@@ -657,7 +657,7 @@ tr9:
         reader++;
       }
 
-      field = rb_enc_str_new(copy, writer - copy, enc);
+      field = rb_enc_str_new(copy, writer - copy, encoding);
       ENCODE;
 
       if (copy != NULL) {
