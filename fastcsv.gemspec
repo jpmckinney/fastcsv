@@ -1,8 +1,9 @@
 # -*- encoding: utf-8 -*-
+require File.expand_path('../lib/fastcsv/version', __FILE__)
 
 Gem::Specification.new do |s|
   s.name        = "fastcsv"
-  s.version     = '0.0.2'
+  s.version     = FastCSV::VERSION
   s.platform    = Gem::Platform::RUBY
   s.authors     = ["Open North"]
   s.email       = ["info@opennorth.ca"]
