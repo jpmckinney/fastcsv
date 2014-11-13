@@ -7,7 +7,7 @@
 // http://w3c.github.io/csvw/syntax/#ebnf
 
 // CSV implementation.
-// https://github.com/ruby/ruby/blob/master/lib/csv.rb
+// https://github.com/ruby/ruby/blob/trunk/lib/csv.rb
 
 // Ruby C extensions help.
 // https://github.com/ruby/ruby/blob/trunk/README.EXT
@@ -176,7 +176,7 @@ VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
   }
 
   // @see CSV#raw_encoding
-  // @see https://github.com/ruby/ruby/blob/70510d026f8d86693dccaba07417488eed09b41d/lib/csv.rb#L1567
+  // @see https://github.com/ruby/ruby/blob/ab337e61ecb5f42384ba7d710c36faf96a454e5c/lib/csv.rb#L2290
   if (rb_respond_to(port, s_internal_encoding)) {
     r_encoding = rb_funcall(port, s_internal_encoding, 0);
     if (NIL_P(r_encoding)) {
@@ -194,7 +194,7 @@ VALUE fastcsv(int argc, VALUE *argv, VALUE self) {
   }
 
   // @see CSV#initialize
-  // @see https://github.com/ruby/ruby/blob/70510d026f8d86693dccaba07417488eed09b41d/lib/csv.rb#L2300
+  // @see https://github.com/ruby/ruby/blob/ab337e61ecb5f42384ba7d710c36faf96a454e5c/lib/csv.rb#L1510
   if (NIL_P(r_encoding)) {
     r_encoding = rb_enc_from_encoding(rb_default_internal_encoding());
   }
