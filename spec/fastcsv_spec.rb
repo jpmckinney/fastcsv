@@ -80,6 +80,13 @@ RSpec.shared_examples 'a CSV parser' do
     # Whitespace.
     # @note Ruby's CSV library has inexplicably inconsistent error messages for
     #   the same class of error.
+    #
+    # * "Missing or stray quote in line %d" if quoted field matches /[^"]"[^"]/,
+    #   for any quote char.
+    # * "Unquoted fields do not allow \r or \n (line \d)" if unquoted field
+    #   contains "\r" or "\n", e.g. if `:row_sep` is "\n" but file uses "\r"
+    # * "Illegal quoting in line %d" if unquoted field contains quote char.
+    # * "Unclosed quoted field on line %d" if reaches EOF without closing.
     [%(   "x"), 'Illegal quoting in line %d.', 'Illegal quoting in line %d.'],
     [%("x"   ), 'Unclosed quoted field on line %d.', 'Illegal quoting in line %d.'],
     [%(   "x"   ), 'Illegal quoting in line %d.', 'Illegal quoting in line %d.'],
