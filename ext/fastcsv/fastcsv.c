@@ -21,7 +21,7 @@ if (enc2 != NULL) { \
   field = rb_str_encode(field, rb_enc_from_encoding(enc), 0, Qnil); \
 }
 
-static VALUE mModule, eError;
+static VALUE mClass, eError;
 static ID s_read, s_to_str, s_internal_encoding, s_external_encoding, s_string, s_encoding;
 
 
@@ -754,8 +754,10 @@ void Init_fastcsv() {
   s_string = rb_intern("string");
   s_encoding = rb_intern("encoding");
 
-  mModule = rb_define_module("FastCSV");
-  rb_define_attr(rb_singleton_class(mModule), "buffer_size", 1, 1);
-  rb_define_singleton_method(mModule, "raw_parse", raw_parse, -1);
-  eError = rb_define_class_under(mModule, "MalformedCSVError", rb_eRuntimeError);
+  mClass = rb_define_class("FastCSV", rb_const_get(rb_cObject, rb_intern("CSV")));
+  // https://github.com/ruby/ruby/blob/trunk/README.EXT#L427
+  // @see http://rxr.whitequark.org/mri/source/class.c#1580
+  rb_define_attr(rb_singleton_class(mClass), "buffer_size", 1, 1); // attr_accessor on singleton class
+  rb_define_singleton_method(mClass, "raw_parse", raw_parse, -1); // triggers int argc, VALUE *argv, VALUE self
+  eError = rb_define_class_under(mClass, "MalformedCSVError", rb_eRuntimeError);
 }
