@@ -75,27 +75,28 @@ class FastCSV < CSV
   end
 
   # CSV's delegated and overwritten IO methods move the pointer within the file,
-  # but FastCSV doesn't notice, so we need to recreate the fiber.
+  # but FastCSV doesn't notice, so we need to recreate the fiber. The old fiber
+  # is garbage collected.
 
   def pos=(*args)
     super
-    # @fiber = nil
+    @fiber = nil
   end
   def reopen(*args)
     super
-    # @fiber = nil
+    @fiber = nil
   end
   def seek(*args)
     super
-    # @fiber = nil
+    @fiber = nil
   end
   def truncate(*args)
     super
-    # @fiber = nil
+    @fiber = nil
   end
   def rewind
     super
-    # @fiber = nil
+    @fiber = nil
   end
 
 private

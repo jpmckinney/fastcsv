@@ -1,5 +1,7 @@
 require 'spec_helper'
 
+$ORIGINAL_VERBOSE = $VERBOSE
+
 RSpec.shared_examples 'a CSV parser' do
   let :simple do
     "foo\nbar\nbaz"
@@ -177,6 +179,14 @@ RSpec.shared_examples 'a CSV parser' do
 end
 
 RSpec.shared_examples 'with encoded strings' do
+  before(:all) do
+    $VERBOSE = nil
+  end
+
+  after(:all) do
+    $VERBOSE = $ORIGINAL_VERBOSE
+  end
+
   def parse_with_encoding(basename, encoding)
     filename = File.expand_path(File.join('..', 'fixtures', basename), __FILE__)
     options = {encoding: encoding}
