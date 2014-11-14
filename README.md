@@ -5,6 +5,8 @@
 
 A fast [Ragel](http://www.colm.net/open-source/ragel/)-based CSV parser.
 
+**Only reads CSVs using `"` as the quote character, `,` as the delimiter and `\r`, `\n` or `\r\n` as the line terminator.**
+
 ## Usage
 
 `FastCSV.raw_parse` is implemented in C and is the fastest way to read CSVs with FastCSV.
@@ -35,15 +37,14 @@ FastCSV.raw_parse("\xF1\n", encoding: 'iso-8859-1:utf-8') do |row|
 end
 ```
 
-Otherwise, FastCSV can be used as a drop-in replacement for CSV (i.e. simply replace `CSV` with `FastCSV`) with a few important caveats:
+FastCSV can be used as a drop-in replacement for [CSV](http://ruby-doc.org/stdlib-2.1.1/libdoc/csv/rdoc/CSV.html) (simply replace `CSV` with `FastCSV`) with a few important caveats:
 
-* The default `:quote_char` (`"`), `:col_sep` (`,`) and `:row_sep` (`:auto`) options cannot be changed. [[#2]](https://github.com/opennorth/fastcsv/issues/2)
-* If FastCSV raises an error, you can't continue reading. [[#3]](https://github.com/opennorth/fastcsv/issues/3)
-* FastCSV's error messages don't perfectly match those of CSV, and it doesn't raise an error if row separators are inconsistent. [[#6]](https://github.com/opennorth/fastcsv/issues/6)
+* The `:quote_char` (`"`), `:col_sep` (`,`) and `:row_sep` (`:auto`) options are ignored. [#2](https://github.com/opennorth/fastcsv/issues/2)
+* If FastCSV raises an error, you can't continue reading. [#3](https://github.com/opennorth/fastcsv/issues/3) Its error messages don't perfectly match those of CSV, and it doesn't raise an error if row separators are inconsistent. [#6](https://github.com/opennorth/fastcsv/issues/6)
+* Use `FastCSV.parse_line(string, options)` instead of `string.parse_csv(options)`.
 * If you were passing CSV an IO object on which you had wrapped `#gets` (for example, as described in [this article](http://graysoftinc.com/rubies-in-the-rough/decorators-verses-the-mix-in), `#gets` will not be called.
 * The `:field_size_limit` option is ignored. (If you need to prevent DoS attacks – the [ostensible reason](http://ruby-doc.org/stdlib-2.1.1/libdoc/csv/rdoc/CSV.html#new-method) for this option – limit the size of the input, not the size of quoted fields.)
-* `string.parse_csv(options)` will still call CSV. Use `FastCSV.parse_line(string, options)` instead.
-* FastCSV only implements fast reading. For writing, you may as well use plain CSV.
+* FastCSV doesn't support UTF-16 or UTF-32. See [UTF-8 Everywhere](http://utf8everywhere.org/).
 
 ## Development
 
@@ -52,6 +53,18 @@ Otherwise, FastCSV can be used as a drop-in replacement for CSV (i.e. simply rep
     rake compile
     gem uninstall fastcsv
     rake install
+
+### Implementation
+
+FastCSV implements its Ragel-based CSV parser in C at `FastCSV::Parser`.
+
+FastCSV is a subclass of [CSV](http://ruby-doc.org/stdlib-2.1.1/libdoc/csv/rdoc/CSV.html). It overrides `#shift`, replacing the parsing code, in order to act as a drop-in replacement.
+
+FastCSV's `raw_parse` requires a block to which it yields one row at a time. FastCSV uses [Fiber](http://www.ruby-doc.org/core-2.1.1/Fiber.html)s to pass control back to `#shift` while parsing.
+
+CSV delegates IO methods to the IO object it's reading. IO methods that move the pointer within the file like `rewind` will change `#shift`'s behavior. However, the C code won't take notice. We therefore null the Fiber whenever the pointer is moved, so that `#shift` uses a new Fiber.
+
+CSV's `#shift` runs the regular expression in the `:skip_lines` option against a row's raw text. `FastCSV::Parser` implements a `row` method, which returns the most recently parsed row's raw text.
 
 ## Why?
 
