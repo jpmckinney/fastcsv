@@ -1,7 +1,10 @@
 # FastCSV
 
 [![Gem Version](https://badge.fury.io/rb/fastcsv.svg)](http://badge.fury.io/rb/fastcsv)
+[![Build Status](https://secure.travis-ci.org/opennorth/fastcsv.png)](http://travis-ci.org/opennorth/fastcsv)
 [![Dependency Status](https://gemnasium.com/opennorth/fastcsv.png)](https://gemnasium.com/opennorth/fastcsv)
+[![Coverage Status](https://coveralls.io/repos/opennorth/fastcsv/badge.png?branch=master)](https://coveralls.io/r/opennorth/fastcsv)
+[![Code Climate](https://codeclimate.com/github/opennorth/fastcsv.png)](https://codeclimate.com/github/opennorth/fastcsv)
 
 A fast [Ragel](http://www.colm.net/open-source/ragel/)-based CSV parser.
 
