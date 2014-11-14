@@ -22,9 +22,6 @@ if (enc2 != NULL) { \
 #define FREE \
 if (buf != NULL) { \
   free(buf); \
-} \
-if (row_sep != NULL) { \
-  free(row_sep); \
 }
 
 static VALUE cClass, cParser, eError;
@@ -99,24 +96,9 @@ typedef struct {
 
   action mark_row {
     d->start = p;
-
-    if (len_row_sep) {
-      if (p - mark_row_sep != len_row_sep || row_sep[0] != *mark_row_sep || len_row_sep == 2 && row_sep[1] != *(mark_row_sep + 1)) {
-        FREE;
-
-        rb_raise(eError, "Unquoted fields do not allow \\r or \\n (line %d).", curline - 1);
-      }
-    }
-    else {
-      len_row_sep = p - mark_row_sep;
-      row_sep = ALLOC_N(char, p - mark_row_sep);
-      memcpy(row_sep, mark_row_sep, p - mark_row_sep);
-    }
   }
 
   action new_row {
-    mark_row_sep = p;
-
     curline++;
 
     if (d->start == 0 || p == d->start) {
@@ -202,11 +184,11 @@ static void rb_io_ext_int_to_encs(rb_encoding *ext, rb_encoding *intern, rb_enco
 
 static VALUE raw_parse(int argc, VALUE *argv, VALUE self) {
   int cs, act, have = 0, curline = 1, io = 0;
-  char *ts = 0, *te = 0, *buf = 0, *eof = 0, *mark_row_sep = 0, *row_sep = NULL;
+  char *ts = 0, *te = 0, *buf = 0, *eof = 0;
 
   VALUE port, opts, r_encoding;
   VALUE row = rb_ary_new(), field = Qnil, bufsize = Qnil;
-  int done = 0, unclosed_line = 0, len_row_sep = 0, buffer_size = 0, taint = 0;
+  int done = 0, unclosed_line = 0, buffer_size = 0, taint = 0;
   rb_encoding *enc = NULL, *enc2 = NULL, *encoding = NULL;
 
   Data *d;
@@ -369,7 +351,7 @@ static VALUE raw_parse(int argc, VALUE *argv, VALUE self) {
   while (!done) {
     VALUE str;
     char *p, *pe;
-    int len, space = buffer_size - have, tokstart_diff, tokend_diff, start_diff, mark_row_sep_diff;
+    int len, space = buffer_size - have, tokstart_diff, tokend_diff, start_diff;
 
     if (io) {
       if (space == 0) {
@@ -377,7 +359,6 @@ static VALUE raw_parse(int argc, VALUE *argv, VALUE self) {
         tokstart_diff = ts - buf;
         tokend_diff = te - buf;
         start_diff = d->start - buf;
-        mark_row_sep_diff = mark_row_sep - buf;
 
         buffer_size += BUFSIZE;
         REALLOC_N(buf, char, buffer_size);
@@ -387,7 +368,6 @@ static VALUE raw_parse(int argc, VALUE *argv, VALUE self) {
         ts = buf + tokstart_diff;
         te = buf + tokend_diff;
         d->start = buf + start_diff;
-        mark_row_sep = buf + mark_row_sep_diff;
       }
       p = buf + have;
 
