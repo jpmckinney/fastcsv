@@ -92,10 +92,6 @@ class FastCSV < CSV
     super
     @fiber = nil
   end
-  def truncate(*args)
-    super
-    @fiber = nil
-  end
   def rewind
     super
     @fiber = nil

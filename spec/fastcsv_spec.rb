@@ -318,4 +318,54 @@ RSpec.describe FastCSV do
       end
     end
   end
+
+  context 'with IO methods' do
+    let(:csv) do
+      FastCSV.open(File.expand_path(File.join('..', 'fixtures', 'csv.csv'), __FILE__))
+    end
+
+    let(:csv2) do
+      FastCSV.open(File.expand_path(File.join('..', 'fixtures', 'csv.csv'), __FILE__))
+    end
+
+    describe '#pos=' do
+      it 'should read from the new position' do
+        expect(csv.shift).to eq(%w(name age))
+        expect(csv.shift).to eq(%w(Alice 42))
+        csv.pos = 9
+        expect(csv.shift).to eq(%w(Alice 42))
+        expect(csv.shift).to eq(%w(Bob 40))
+      end
+    end
+
+    describe '#reopen' do
+      it 'should read from the new position' do
+        expect(csv.shift).to eq(%w(name age))
+        expect(csv.shift).to eq(%w(Alice 42))
+        csv.reopen(csv2)
+        expect(csv.shift).to eq(%w(name age))
+        expect(csv.shift).to eq(%w(Alice 42))
+      end
+    end
+
+    describe '#seek' do
+      it 'should read from the new position' do
+        expect(csv.shift).to eq(%w(name age))
+        expect(csv.shift).to eq(%w(Alice 42))
+        csv.seek(9)
+        expect(csv.shift).to eq(%w(Alice 42))
+        expect(csv.shift).to eq(%w(Bob 40))
+      end
+    end
+
+    describe '#rewind' do
+      it 'should read from the new position' do
+        expect(csv.shift).to eq(%w(name age))
+        expect(csv.shift).to eq(%w(Alice 42))
+        csv.rewind
+        expect(csv.shift).to eq(%w(name age))
+        expect(csv.shift).to eq(%w(Alice 42))
+      end
+    end
+  end
 end
