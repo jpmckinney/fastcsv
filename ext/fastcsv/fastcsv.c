@@ -736,6 +736,13 @@ case 3:
 #line 409 "ext/fastcsv/fastcsv.rl"
 
     if (done && cs < raw_parse_first_final) {
+      if (d->start == 0 || p == d->start) {
+        rb_ivar_set(self, s_row, rb_str_new2(""));
+      }
+      else if (p > d->start) {
+        rb_ivar_set(self, s_row, rb_str_new(d->start, p - d->start));
+      }
+
       FREE;
 
       if (unclosed_line) {

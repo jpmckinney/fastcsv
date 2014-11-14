@@ -8,6 +8,10 @@ class FastCSV < CSV
     Parser.new.raw_parse(*args, &block)
   end
 
+  def row
+    parser && parser.row
+  end
+
   def shift
     # COPY
     # handle headers not based on document content
