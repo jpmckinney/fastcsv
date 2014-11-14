@@ -137,7 +137,7 @@ RSpec.shared_examples 'a CSV parser' do
     expect(actual).to eq(expected)
   end
 
-  it 'should raise an error on mixed row separators are' do
+  it 'should raise an error on mixed row separators' do
     expect{CSV.parse("foo\rbar\nbaz\r\n")}.to raise_error(CSV::MalformedCSVError, 'Unquoted fields do not allow \r or \n (line 2).')
     skip
   end
@@ -189,8 +189,12 @@ RSpec.shared_examples 'with encoded strings' do
     end
   end
 
-  it 'should encode' do
+  it 'should encode with internal encoding' do
     parse_with_encoding("iso-8859-1#{suffix}.csv", 'iso-8859-1')
+  end
+
+  it 'should encode with external encoding' do
+    parse_with_encoding("iso-8859-1#{suffix}.csv", 'iso-8859-1:-')
   end
 
   it 'should transcode' do
@@ -203,13 +207,15 @@ RSpec.shared_examples 'with encoded strings' do
 
   it 'should recover from invalid internal encoding' do
     parse_with_encoding("utf-8#{suffix}.csv", 'invalid')
+    parse_with_encoding("utf-8#{suffix}.csv", 'utf-8:invalid')
   end
 
   it 'should recover from invalid external encoding' do
     parse_with_encoding("utf-8#{suffix}.csv", 'invalid:-')
+    parse_with_encoding("utf-8#{suffix}.csv", 'invalid:utf-8')
   end
 
-  it 'should recover from invalid encodings' do
+  it 'should recover from invalid internal and external encodings' do
     parse_with_encoding("utf-8#{suffix}.csv", 'invalid:invalid')
   end
 end
