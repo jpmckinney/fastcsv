@@ -7,4 +7,5 @@ before_script:
   - rake compile
 script:
   - rake
-  - rspec test/runner.rb test/csv
+  # The CSV tests in test/ are specific to Ruby 2.1.0.
+  - if [ $TRAVIS_RUBY_VERSION = '2.1.0' ]; then rspec test/runner.rb test/csv; fi
