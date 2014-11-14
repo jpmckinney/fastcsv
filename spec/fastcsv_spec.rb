@@ -88,28 +88,32 @@ RSpec.shared_examples 'a CSV parser' do
 
   [
     # Whitespace.
-    # @note Ruby's CSV library has inexplicably inconsistent error messages for
-    #   the same class of error.
     #
-    # * "Missing or stray quote in line %d" if quoted field matches /[^"]"[^"]/,
-    #   for any quote char.
+    # CSV's error messages are a consequence of its parser's implementation. It
+    # splits on :col_sep and then reads parts, making it possible to identify
+    # its "Missing or stray quote". FastCSV, as a state machine, wouldn't even
+    # get that far, as it would simply find no match and quit.
+    #
+    # * "Missing or stray quote in line %d" if quoted field matches /[^"]"[^"]/
+    #   (for any quote char). Raises "Unclosed quoted field" instead if the
+    #   quoted field has an odd number of quote chars.
     # * "Unquoted fields do not allow \r or \n (line \d)" if unquoted field
     #   contains "\r" or "\n", e.g. if `:row_sep` is "\n" but file uses "\r"
     # * "Illegal quoting in line %d" if unquoted field contains quote char.
     # * "Unclosed quoted field on line %d" if reaches EOF without closing.
     [%(   "x"), 'Illegal quoting in line %d.', 'Illegal quoting in line %d.'],
-    [%("x"   ), 'Unclosed quoted field on line %d.', 'Illegal quoting in line %d.'],
+    [%("x"   ), 'Unclosed quoted field on line %d.', 'Illegal quoting in line %d.'], # WONTFIX
     [%(   "x"   ), 'Illegal quoting in line %d.', 'Illegal quoting in line %d.'],
     # Tab.
     [%(	"x"), 'Illegal quoting in line %d.', 'Illegal quoting in line %d.'],
-    [%("x"	), 'Unclosed quoted field on line %d.', 'Illegal quoting in line %d.'],
+    [%("x"	), 'Unclosed quoted field on line %d.', 'Illegal quoting in line %d.'], # WONTFIX
     [%(	"x"	), 'Illegal quoting in line %d.', 'Illegal quoting in line %d.'],
 
     # Quoted next to unquoted.
-    [%("x"x), 'Unclosed quoted field on line %d.', 'Illegal quoting in line %d.'],
+    [%("x"x), 'Unclosed quoted field on line %d.', 'Illegal quoting in line %d.'], # WONTFIX
     [%(x"x"), 'Illegal quoting in line %d.', 'Illegal quoting in line %d.'],
     [%(x"x"x), 'Illegal quoting in line %d.', 'Illegal quoting in line %d.'],
-    [%("x"x"x"), 'Missing or stray quote in line %d', 'Illegal quoting in line %d.'],
+    [%("x"x"x"), 'Missing or stray quote in line %d', 'Illegal quoting in line %d.'], # WONTFIX
 
     # Unclosed quote.
     [%("x), 'Unclosed quoted field on line %d.', 'Unclosed quoted field on line %d.'],
@@ -118,7 +122,7 @@ RSpec.shared_examples 'a CSV parser' do
     [%(x"x), 'Illegal quoting in line %d.', 'Illegal quoting in line %d.'],
 
     # Unescaped quote in quoted field.
-    [%("x"x"), 'Unclosed quoted field on line %d.', 'Illegal quoting in line %d.'],
+    [%("x"x"), 'Unclosed quoted field on line %d.', 'Illegal quoting in line %d.'], # WONTFIX
   ].each do |csv,csv_error,fastcsv_error|
     it "should raise an error on: #{csv.inspect.gsub('\"', '"')}" do
       expect{CSV.parse(csv)}.to raise_error(CSV::MalformedCSVError, csv_error % 1)
