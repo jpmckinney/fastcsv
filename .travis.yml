@@ -7,4 +7,4 @@ before_script:
   - rake compile
 script:
   - rake
-  - ruby test/runner.rb test/csv
+  - rspec test/runner.rb test/csv

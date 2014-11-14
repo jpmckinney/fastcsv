@@ -1,4 +1,4 @@
-require_relative "../lib/fastcsv"
+require "fastcsv"
 require 'rbconfig'
 
 require 'test/unit'

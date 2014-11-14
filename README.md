@@ -60,7 +60,7 @@ A few minor caveats:
     gem uninstall fastcsv
     rake install
     rake
-    ruby test/runner.rb test/csv
+    rspec test/runner.rb test/csv
 
 ### Implementation
 
@@ -73,6 +73,8 @@ FastCSV's `raw_parse` requires a block to which it yields one row at a time. Fas
 CSV delegates IO methods to the IO object it's reading. IO methods that move the pointer within the file like `rewind` changes the behavior of CSV's `#shift`. However, FastCSV's C code won't take notice. We therefore null the Fiber whenever the pointer is moved, so that `#shift` uses a new Fiber.
 
 CSV's `#shift` runs the regular expression in the `:skip_lines` option against a row's raw text. `FastCSV::Parser` implements a `row` method, which returns the most recently parsed row's raw text.
+
+FastCSV is tested against the same tests as CSV. See [TESTS.md](https://github.com/opennorth/fastcsv/blob/master/TESTS.md) for details.
 
 ## Why?
 

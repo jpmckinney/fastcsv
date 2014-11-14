@@ -20,7 +20,7 @@ Here are some notes on maintaining the `test/` directory.
 
 1. Replace `\bCSV\b` with `FastCSV`. And run:
 
-        sed -i.bak '1s;^;require_relative "../lib/fastcsv"\
+        sed -i.bak '1s;^;require "fastcsv"\
         ;' test/runner.rb
 
 1. In `test_interface.rb`, replace `\\t|;|(?<=\S)\|(?=\S)` with `,`. In `test_encodings.rb`, replace `(?<=[^\s{])\|(?=\S)` with `,` and replace `Encoding.list` with `Encoding.list.reject{|e| e.name[/\AUTF-\d\d/]}`. These changes are because `:col_sep`, `:row_sep` and `:quote_char` are ignored and because UTF-16 and UTF-32 aren't supported.
