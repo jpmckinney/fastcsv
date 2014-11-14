@@ -39,7 +39,4 @@ Here are some notes on maintaining the `test/` directory.
   * the second part of `test_read_allows_you_to_set_encodings`
   * the second line of `encode_for_tests`
 
-1. Comment these tests:
-
-  * `test_csv_parsing.rb`: `test_field_size_limit_controls_lookahead` (`:field_size_limit` not supported)
-  * `test_csv_parsing.rb`: the third part of `test_malformed_csv` (no mixed row separators error) [#6](https://github.com/opennorth/fastcsv/issues/6)
+1. Comment `test_field_size_limit_controls_lookahead` in `test_csv_parsing.rb` (`:field_size_limit` not supported). FastCSV reads one more line than CSV in `test_malformed_csv`, but not sure that's worth mirroring.

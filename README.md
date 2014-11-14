@@ -43,7 +43,7 @@ end
 FastCSV can be used as a drop-in replacement for [CSV](http://ruby-doc.org/stdlib-2.1.1/libdoc/csv/rdoc/CSV.html) (replace `CSV` with `FastCSV`) except:
 
 * The `:quote_char` (`"`), `:col_sep` (`,`) and `:row_sep` (`:auto`) options are ignored. [#2](https://github.com/opennorth/fastcsv/issues/2)
-* If FastCSV raises an error, you can't continue reading. [#3](https://github.com/opennorth/fastcsv/issues/3) Its error messages don't perfectly match those of CSV, and it doesn't raise an error if row separators are inconsistent. [#6](https://github.com/opennorth/fastcsv/issues/6)
+* If FastCSV raises an error, you can't continue reading. [#3](https://github.com/opennorth/fastcsv/issues/3) Its error messages don't perfectly match those of CSV.
 
 A few minor caveats:
 
