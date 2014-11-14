@@ -30,10 +30,6 @@ typedef struct {
 %%{
   machine raw_parse;
 
-  action new_line {
-    curline++;
-  }
-
   action open_quote {
     unclosed_line = curline;
   }
@@ -98,6 +94,8 @@ typedef struct {
   }
 
   action new_row {
+    curline++;
+
     if (d->start == 0 || p == d->start) {
       rb_ivar_set(self, s_row, rb_str_new2(""));
     }
@@ -134,7 +132,7 @@ typedef struct {
   EOF = 0;
   quote_char = '"';
   col_sep = ',' >new_field;
-  row_sep = ('\r' '\n'? | '\n') @new_line;
+  row_sep = ('\r' '\n'? | '\n');
   unquoted = (any* -- quote_char -- col_sep -- row_sep - EOF) %read_unquoted;
   quoted = quote_char >open_quote (any - quote_char - EOF | quote_char quote_char | row_sep)* %read_quoted quote_char >close_quote;
   field = unquoted | quoted;

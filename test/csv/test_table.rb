@@ -14,19 +14,19 @@ class TestCSV::Table < TestCSV
 
   def setup
     super
-    @rows  = [ CSV::Row.new(%w{A B C}, [1, 2, 3]),
-               CSV::Row.new(%w{A B C}, [4, 5, 6]),
-               CSV::Row.new(%w{A B C}, [7, 8, 9]) ]
-    @table = CSV::Table.new(@rows)
+    @rows  = [ FastCSV::Row.new(%w{A B C}, [1, 2, 3]),
+               FastCSV::Row.new(%w{A B C}, [4, 5, 6]),
+               FastCSV::Row.new(%w{A B C}, [7, 8, 9]) ]
+    @table = FastCSV::Table.new(@rows)
 
-    @header_table = CSV::Table.new(
-      [CSV::Row.new(%w{A B C}, %w{A B C}, true)] + @rows
+    @header_table = FastCSV::Table.new(
+      [FastCSV::Row.new(%w{A B C}, %w{A B C}, true)] + @rows
     )
   end
 
   def test_initialze
     assert_not_nil(@table)
-    assert_instance_of(CSV::Table, @table)
+    assert_instance_of(FastCSV::Table, @table)
   end
 
   def test_modes
@@ -111,7 +111,7 @@ class TestCSV::Table < TestCSV
     @table[2] = [10, 11, 12]
     assert_equal([%w[A B C], [1, 2, 3], [4, 5, 6], [10, 11, 12]], @table.to_a)
 
-    @table[3] = CSV::Row.new(%w[A B C], [13, 14, 15])
+    @table[3] = FastCSV::Row.new(%w[A B C], [13, 14, 15])
     assert_equal( [%w[A B C], [1, 2, 3], [4, 5, 6], [10, 11, 12], [13, 14, 15]],
                   @table.to_a )
 
@@ -219,9 +219,9 @@ class TestCSV::Table < TestCSV
     ############################
     @table.by_col_or_row!
 
-    @table.each { |row| assert_instance_of(CSV::Row, row) }
+    @table.each { |row| assert_instance_of(FastCSV::Row, row) }
     @table.by_col.each { |tuple| assert_instance_of(Array, tuple) }
-    @table.each { |row| assert_instance_of(CSV::Row, row) }
+    @table.each { |row| assert_instance_of(FastCSV::Row, row) }
   end
 
   def test_enumerable
@@ -266,11 +266,11 @@ class TestCSV::Table < TestCSV
     assert_equal(@table, @table << [10, 11, 12])
 
     # Array append
-    assert_equal(CSV::Row.new(%w[A B C], [10, 11, 12]), @table[-1])
+    assert_equal(FastCSV::Row.new(%w[A B C], [10, 11, 12]), @table[-1])
 
     # Row append
-    assert_equal(@table, @table << CSV::Row.new(%w[A B C], [13, 14, 15]))
-    assert_equal(CSV::Row.new(%w[A B C], [13, 14, 15]), @table[-1])
+    assert_equal(@table, @table << FastCSV::Row.new(%w[A B C], [13, 14, 15]))
+    assert_equal(FastCSV::Row.new(%w[A B C], [13, 14, 15]), @table[-1])
   end
 
   def test_delete_mixed
@@ -328,7 +328,7 @@ class TestCSV::Table < TestCSV
 
   def test_delete_with_blank_rows
     data = "col1,col2\nra1,ra2\n\nrb1,rb2"
-    table = CSV.parse(data, :headers => true)
+    table = FastCSV.parse(data, :headers => true)
     assert_equal(["ra2", nil, "rb2"], table.delete("col2"))
   end
 

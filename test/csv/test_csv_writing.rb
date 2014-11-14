@@ -73,25 +73,25 @@ class TestCSV::Writing < TestCSV
       [%Q{,"\r"},                 [nil,"\r"]],
       [%Q{"\r\n,"},               ["\r\n,"]],
       [%Q{"\r\n,",},              ["\r\n,", nil]] ].each do |test_case|
-        assert_equal(test_case.first + $/, CSV.generate_line(test_case.last))
+        assert_equal(test_case.first + $/, FastCSV.generate_line(test_case.last))
       end
   end
 
   def test_col_sep
-    assert_equal( "a;b;;c\n", CSV.generate_line( ["a", "b", nil, "c"],
+    assert_equal( "a;b;;c\n", FastCSV.generate_line( ["a", "b", nil, "c"],
                                                  col_sep: ";" ) )
-    assert_equal( "a\tb\t\tc\n", CSV.generate_line( ["a", "b", nil, "c"],
+    assert_equal( "a\tb\t\tc\n", FastCSV.generate_line( ["a", "b", nil, "c"],
                                                     col_sep: "\t" ) )
   end
 
   def test_row_sep
-    assert_equal( "a,b,,c\r\n", CSV.generate_line( ["a", "b", nil, "c"],
+    assert_equal( "a,b,,c\r\n", FastCSV.generate_line( ["a", "b", nil, "c"],
                                                    row_sep: "\r\n" ) )
   end
 
   def test_force_quotes
     assert_equal( %Q{"1","b","","already ""quoted"""\n},
-                  CSV.generate_line( [1, "b", nil, %Q{already "quoted"}],
+                  FastCSV.generate_line( [1, "b", nil, %Q{already "quoted"}],
                                      force_quotes: true ) )
   end
 end

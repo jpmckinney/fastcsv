@@ -14,40 +14,40 @@ class TestCSV::Row < TestCSV
 
   def setup
     super
-    @row = CSV::Row.new(%w{A B C A A}, [1, 2, 3, 4])
+    @row = FastCSV::Row.new(%w{A B C A A}, [1, 2, 3, 4])
   end
 
   def test_initialize
     # basic
-    row = CSV::Row.new(%w{A B C}, [1, 2, 3])
+    row = FastCSV::Row.new(%w{A B C}, [1, 2, 3])
     assert_not_nil(row)
-    assert_instance_of(CSV::Row, row)
+    assert_instance_of(FastCSV::Row, row)
     assert_equal([["A", 1], ["B", 2], ["C", 3]], row.to_a)
 
     # missing headers
-    row = CSV::Row.new(%w{A}, [1, 2, 3])
+    row = FastCSV::Row.new(%w{A}, [1, 2, 3])
     assert_not_nil(row)
-    assert_instance_of(CSV::Row, row)
+    assert_instance_of(FastCSV::Row, row)
     assert_equal([["A", 1], [nil, 2], [nil, 3]], row.to_a)
 
     # missing fields
-    row = CSV::Row.new(%w{A B C}, [1, 2])
+    row = FastCSV::Row.new(%w{A B C}, [1, 2])
     assert_not_nil(row)
-    assert_instance_of(CSV::Row, row)
+    assert_instance_of(FastCSV::Row, row)
     assert_equal([["A", 1], ["B", 2], ["C", nil]], row.to_a)
   end
 
   def test_row_type
     # field rows
-    row = CSV::Row.new(%w{A B C}, [1, 2, 3])         # implicit
+    row = FastCSV::Row.new(%w{A B C}, [1, 2, 3])         # implicit
     assert(!row.header_row?)
     assert(row.field_row?)
-    row = CSV::Row.new(%w{A B C}, [1, 2, 3], false)  # explicit
+    row = FastCSV::Row.new(%w{A B C}, [1, 2, 3], false)  # explicit
     assert(!row.header_row?)
     assert(row.field_row?)
 
     # header row
-    row = CSV::Row.new(%w{A B C}, [1, 2, 3], true)
+    row = FastCSV::Row.new(%w{A B C}, [1, 2, 3], true)
     assert(row.header_row?)
     assert(!row.field_row?)
   end
@@ -287,7 +287,7 @@ class TestCSV::Row < TestCSV
   end
 
   def test_to_a
-    row = CSV::Row.new(%w{A B C}, [1, 2, 3]).to_a
+    row = FastCSV::Row.new(%w{A B C}, [1, 2, 3]).to_a
     assert_instance_of(Array, row)
     row.each do |pair|
       assert_instance_of(Array, pair)
@@ -336,7 +336,7 @@ class TestCSV::Row < TestCSV
   end
 
   def test_inspect_shows_symbol_headers_as_bare_attributes
-    str = CSV::Row.new(@row.headers.map { |h| h.to_sym }, @row.fields).inspect
+    str = FastCSV::Row.new(@row.headers.map { |h| h.to_sym }, @row.fields).inspect
     @row.each do |header, field|
       assert( str.include?("#{header}:#{field.inspect}"),
               "Header field pair not found." )
@@ -344,6 +344,6 @@ class TestCSV::Row < TestCSV
   end
 
   def test_can_be_compared_with_other_classes
-    assert(CSV::Row.new([ ], [ ]) != nil, "The row was nil")
+    assert(FastCSV::Row.new([ ], [ ]) != nil, "The row was nil")
   end
 end

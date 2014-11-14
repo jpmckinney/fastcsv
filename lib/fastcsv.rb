@@ -31,16 +31,18 @@ class FastCSV < CSV
       return nil
     end
 
+    row = parser.row
+
     # COPY
     if csv.empty?
       #
       # I believe a blank line should be an <tt>Array.new</tt>, not Ruby 1.8
       # CSV's <tt>[nil]</tt>
       #
-      if parse.empty?
+      if row.empty? # was if parse.empty?
         @lineno += 1
         if @skip_blanks
-          shift # was next
+          return shift # was next
         elsif @unconverted_fields
           return add_unconverted_fields(Array.new, Array.new)
         elsif @use_headers
@@ -52,7 +54,7 @@ class FastCSV < CSV
     end
     # PASTE
 
-    shift if @skip_lines and @skip_lines.match row # was next if @skip_lines and @skip_lines.match parse
+    return shift if @skip_lines and @skip_lines.match row # was next if @skip_lines and @skip_lines.match parse
 
     # COPY
     @lineno += 1
@@ -108,18 +110,22 @@ private
   def fiber
     # @see http://www.ruby-doc.org/core-2.1.4/Fiber.html
     @fiber ||= Fiber.new do
-      parser.raw_parse(@io) do |row|
+      if @io.respond_to?(:internal_encoding)
+        enc2 = @io.external_encoding
+        enc = @io.internal_encoding || '-'
+        if enc2
+          encoding = "#{enc2}:#{enc}"
+        else
+          encoding = enc
+        end
+      end
+      parser.raw_parse(@io, encoding: encoding) do |row|
         Fiber.yield(row)
       end
     end
   end
+end
 
-  def init_separators(options)
-    super
-    @col_sep = ','
-    # FastCSV actually splits on "\r", "\n" or "\r\n", but we have no way to
-    # report that as a simple string.
-    @row_sep = "\r\n"
-    @quote_char = '"'
-  end
+def FastCSV(*args, &block)
+  FastCSV.instance(*args, &block)
 end
