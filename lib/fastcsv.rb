@@ -82,18 +82,22 @@ class FastCSV < CSV
 
   def pos=(*args)
     super
+    @parser = nil
     @fiber = nil
   end
   def reopen(*args)
     super
+    @parser = nil
     @fiber = nil
   end
   def seek(*args)
     super
+    @parser = nil
     @fiber = nil
   end
   def rewind
     super
+    @parser = nil
     @fiber = nil
   end
 
