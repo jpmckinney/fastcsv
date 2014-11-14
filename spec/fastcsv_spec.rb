@@ -97,7 +97,7 @@ RSpec.shared_examples 'a CSV parser' do
     # * "Missing or stray quote in line %d" if quoted field matches /[^"]"[^"]/
     #   (for any quote char). Raises "Unclosed quoted field" instead if the
     #   quoted field has an odd number of quote chars.
-    # * "Unquoted fields do not allow \r or \n (line \d)" if unquoted field
+    # * "Unquoted fields do not allow \r or \n (line \d)." if unquoted field
     #   contains "\r" or "\n", e.g. if `:row_sep` is "\n" but file uses "\r"
     # * "Illegal quoting in line %d" if unquoted field contains quote char.
     # * "Unclosed quoted field on line %d" if reaches EOF without closing.
@@ -145,8 +145,9 @@ RSpec.shared_examples 'a CSV parser' do
   end
 
   it 'should raise an error on mixed row separators' do
-    expect{CSV.parse("foo\rbar\nbaz\r\n")}.to raise_error(CSV::MalformedCSVError, 'Unquoted fields do not allow \r or \n (line 2).')
-    skip
+    csv = "foo\rbar\nbaz\r\n"
+    expect{CSV.parse(csv)}.to raise_error(CSV::MalformedCSVError, 'Unquoted fields do not allow \r or \n (line 2).')
+    expect{FastCSV.parse(csv)}.to raise_error(FastCSV::MalformedCSVError, 'Unquoted fields do not allow \r or \n (line 2).')
   end
 
   context 'when initializing' do
