@@ -6,7 +6,7 @@
 [![Coverage Status](https://coveralls.io/repos/opennorth/fastcsv/badge.png?branch=master)](https://coveralls.io/r/opennorth/fastcsv)
 [![Code Climate](https://codeclimate.com/github/opennorth/fastcsv.png)](https://codeclimate.com/github/opennorth/fastcsv)
 
-A fast [Ragel](http://www.colm.net/open-source/ragel/)-based CSV parser.
+A fast [Ragel](http://www.colm.net/open-source/ragel/)-based CSV parser, compatible with Ruby's CSV.
 
 **Only reads CSVs using `"` as the quote character, `,` as the delimiter and `\r`, `\n` or `\r\n` as the line terminator.**
 
