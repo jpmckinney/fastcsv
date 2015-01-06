@@ -1,10 +1,10 @@
 # FastCSV
 
 [![Gem Version](https://badge.fury.io/rb/fastcsv.svg)](http://badge.fury.io/rb/fastcsv)
-[![Build Status](https://secure.travis-ci.org/opennorth/fastcsv.png)](http://travis-ci.org/opennorth/fastcsv)
-[![Dependency Status](https://gemnasium.com/opennorth/fastcsv.png)](https://gemnasium.com/opennorth/fastcsv)
-[![Coverage Status](https://coveralls.io/repos/opennorth/fastcsv/badge.png?branch=master)](https://coveralls.io/r/opennorth/fastcsv)
-[![Code Climate](https://codeclimate.com/github/opennorth/fastcsv.png)](https://codeclimate.com/github/opennorth/fastcsv)
+[![Build Status](https://secure.travis-ci.org/jpmckinney/fastcsv.png)](http://travis-ci.org/jpmckinney/fastcsv)
+[![Dependency Status](https://gemnasium.com/jpmckinney/fastcsv.png)](https://gemnasium.com/jpmckinney/fastcsv)
+[![Coverage Status](https://coveralls.io/repos/jpmckinney/fastcsv/badge.png?branch=master)](https://coveralls.io/r/jpmckinney/fastcsv)
+[![Code Climate](https://codeclimate.com/github/jpmckinney/fastcsv.png)](https://codeclimate.com/github/jpmckinney/fastcsv)
 
 A fast [Ragel](http://www.colm.net/open-source/ragel/)-based CSV parser, compatible with Ruby's CSV.
 
@@ -42,8 +42,8 @@ end
 
 FastCSV can be used as a drop-in replacement for [CSV](http://ruby-doc.org/stdlib-2.1.1/libdoc/csv/rdoc/CSV.html) (replace `CSV` with `FastCSV`) except:
 
-* The `:quote_char` (`"`), `:col_sep` (`,`) and `:row_sep` (`:auto`) options are ignored. [#2](https://github.com/opennorth/fastcsv/issues/2)
-* If FastCSV raises an error, you can't continue reading. [#3](https://github.com/opennorth/fastcsv/issues/3) Its error messages don't perfectly match those of CSV.
+* The `:quote_char` (`"`), `:col_sep` (`,`) and `:row_sep` (`:auto`) options are ignored. [#2](https://github.com/jpmckinney/fastcsv/issues/2)
+* If FastCSV raises an error, you can't continue reading. [#3](https://github.com/jpmckinney/fastcsv/issues/3) Its error messages don't perfectly match those of CSV.
 
 A few minor caveats:
 
@@ -74,18 +74,14 @@ CSV delegates IO methods to the IO object it's reading. IO methods that move the
 
 CSV's `#shift` runs the regular expression in the `:skip_lines` option against a row's raw text. `FastCSV::Parser` implements a `row` method, which returns the most recently parsed row's raw text.
 
-FastCSV is tested against the same tests as CSV. See [TESTS.md](https://github.com/opennorth/fastcsv/blob/master/TESTS.md) for details.
+FastCSV is tested against the same tests as CSV. See [TESTS.md](https://github.com/jpmckinney/fastcsv/blob/master/TESTS.md) for details.
 
 ## Why?
 
 We evaluated [many CSV Ruby gems](https://github.com/jpmckinney/csv-benchmark#benchmark), and they were either too slow or had implementation errors. [rcsv](https://github.com/fiksu/rcsv) is fast and [libcsv](http://sourceforge.net/projects/libcsv/)-based, but it skips blank rows (Ruby's CSV module returns an empty array) and silently fails on input with an unclosed quote. [bamfcsv](https://github.com/jondistad/bamfcsv) is well implemented, but it's considerably slower on large files. We looked for Ragel-based CSV parsers to copy, but they either had implementation errors or could not handle large files. [commas](https://github.com/aklt/commas/blob/master/csv.rl) looks good, but it performs a memory check on each character, which is overkill.
 
-## Bugs? Questions?
-
-This project's main repository is on GitHub: [http://github.com/opennorth/fastcsv](http://github.com/opennorth/fastcsv), where your contributions, forks, bug reports, feature requests, and feedback are greatly welcomed.
-
 ## Acknowledgements
 
 Started as a Ruby 2.1 fork of MoonWolf <moonwolf@moonwolf.com>'s CSVScan, found in [this commit](https://github.com/nickstenning/csvscan/commit/11ec30f71a27cc673bca09738ee8a63942f416f0.patch). CSVScan uses Ragel code from [HPricot](https://github.com/hpricot/hpricot/blob/master/ext/hpricot_scan/hpricot_scan.rl) from [this commit](https://github.com/hpricot/hpricot/blob/908a4ae64bc8b935c4415c47ca6aea6492c6ce0a/ext/hpricot_scan/hpricot_scan.rl). Most of the Ruby (i.e. non-C, non-Ragel) methods are copied from [CSV](https://github.com/ruby/ruby/blob/ab337e61ecb5f42384ba7d710c36faf96a454e5c/lib/csv.rb).
 
-Copyright (c) 2014 Open North Inc., released under the MIT license
+Copyright (c) 2014 James McKinney, released under the MIT license
