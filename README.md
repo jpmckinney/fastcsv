@@ -78,7 +78,7 @@ FastCSV is tested against the same tests as CSV. See [TESTS.md](https://github.c
 
 ## Why?
 
-We evaluated [many CSV Ruby gems](https://github.com/jpmckinney/csv-benchmark#benchmark), and they were either too slow or had implementation errors. [rcsv](https://github.com/fiksu/rcsv) is fast and [libcsv](http://sourceforge.net/projects/libcsv/)-based, but it skips blank rows (Ruby's CSV module returns an empty array) and silently fails on input with an unclosed quote. [bamfcsv](https://github.com/jondistad/bamfcsv) is well implemented, but it's considerably slower on large files. We looked for Ragel-based CSV parsers to copy, but they either had implementation errors or could not handle large files. [commas](https://github.com/aklt/commas/blob/master/csv.rl) looks good, but it performs a memory check on each character, which is overkill.
+I evaluated [many CSV Ruby gems](https://github.com/jpmckinney/csv-benchmark#benchmark), and they were either too slow or had implementation errors. [rcsv](https://github.com/fiksu/rcsv) is fast and [libcsv](http://sourceforge.net/projects/libcsv/)-based, but it skips blank rows (Ruby's CSV module returns an empty array) and silently fails on input with an unclosed quote. [bamfcsv](https://github.com/jondistad/bamfcsv) is well implemented, but it's considerably slower on large files. I looked for Ragel-based CSV parsers to copy, but they either had implementation errors or could not handle large files. [commas](https://github.com/aklt/commas/blob/master/csv.rl) looks good, but it performs a memory check on each character, which is overkill.
 
 ## Acknowledgements
 
