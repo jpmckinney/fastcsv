@@ -1,7 +1,7 @@
 # FastCSV
 
-[![Gem Version](https://badge.fury.io/rb/fastcsv.svg)](http://badge.fury.io/rb/fastcsv)
-[![Build Status](https://secure.travis-ci.org/jpmckinney/fastcsv.png)](http://travis-ci.org/jpmckinney/fastcsv)
+[![Gem Version](https://badge.fury.io/rb/fastcsv.svg)](https://badge.fury.io/rb/fastcsv)
+[![Build Status](https://secure.travis-ci.org/jpmckinney/fastcsv.png)](https://travis-ci.org/jpmckinney/fastcsv)
 [![Dependency Status](https://gemnasium.com/jpmckinney/fastcsv.png)](https://gemnasium.com/jpmckinney/fastcsv)
 [![Coverage Status](https://coveralls.io/repos/jpmckinney/fastcsv/badge.png)](https://coveralls.io/r/jpmckinney/fastcsv)
 [![Code Climate](https://codeclimate.com/github/jpmckinney/fastcsv.png)](https://codeclimate.com/github/jpmckinney/fastcsv)

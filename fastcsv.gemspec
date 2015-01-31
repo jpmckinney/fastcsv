@@ -5,7 +5,7 @@ Gem::Specification.new do |s|
   s.version     = '0.0.4'
   s.platform    = Gem::Platform::RUBY
   s.authors     = ["James McKinney"]
-  s.homepage    = "http://github.com/jpmckinney/fastcsv"
+  s.homepage    = "https://github.com/jpmckinney/fastcsv"
   s.summary     = %q{A fast Ragel-based CSV parser, compatible with Ruby's CSV}
   s.license     = 'MIT'
 
