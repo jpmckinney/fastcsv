@@ -147,7 +147,6 @@ RSpec.shared_examples 'a CSV parser' do
   it 'should raise an error on mixed row separators' do
     csv = "foo\rbar\nbaz\r\n"
     expect{CSV.parse(csv)}.to raise_error(CSV::MalformedCSVError, 'Unquoted fields do not allow \r or \n (line 2).')
-    skip
     expect{FastCSV.parse(csv)}.to raise_error(FastCSV::MalformedCSVError, 'Unquoted fields do not allow \r or \n (line 2).')
   end
 

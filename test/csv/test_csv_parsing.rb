@@ -160,16 +160,16 @@ class TestCSV::Parsing < TestCSV
     assert_equal(6, lines.size)
     assert_match(/\Aline,4/, lines.find { |l| l =~ /some\rjunk/ })
 
-    # csv = FastCSV.new(bad_data)
-    # begin
-    #   loop do
-    #     assert_not_nil(csv.shift)
-    #     assert_send([csv.lineno, :<, 5]) # FIXME 4
-    #   end
-    # rescue FastCSV::MalformedCSVError
-    #   assert_equal( "Unquoted fields do not allow \\r or \\n (line 4).",
-    #                 $!.message )
-    # end
+    csv = FastCSV.new(bad_data)
+    begin
+      loop do
+        assert_not_nil(csv.shift)
+        assert_send([csv.lineno, :<, 5]) # FIXME 4
+      end
+    rescue FastCSV::MalformedCSVError
+      assert_equal( "Unquoted fields do not allow \\r or \\n (line 4).",
+                    $!.message )
+    end
 
     assert_raise(FastCSV::MalformedCSVError) { FastCSV.parse_line('1,2,"3...') }
 
