@@ -104,7 +104,7 @@ typedef struct {
       if (p - mark_row_sep != len_row_sep || row_sep[0] != *mark_row_sep || (len_row_sep == 2 && row_sep[1] != *(mark_row_sep + 1))) {
         FREE;
 
-        rb_raise(eError, "Unquoted fields do not allow \\r or \\n (line %d).", curline - 1);
+        rb_raise(eError, "Unquoted fields do not allow \\r or \\n (line %d).", curline);
       }
     }
     else {
@@ -112,11 +112,12 @@ typedef struct {
       row_sep = ALLOC_N(char, len_row_sep);
       memcpy(row_sep, mark_row_sep, len_row_sep);
     }
+
+    curline++;
   }
 
   action new_row {
     mark_row_sep = p;
-    curline++;
 
     if (d->start == 0 || p == d->start) {
       rb_ivar_set(self, s_row, rb_str_new2(""));
@@ -160,6 +161,8 @@ typedef struct {
   field = unquoted | quoted;
 
   # @see Ragel Guide: 6.3 Scanners
+  # > Entering
+  # % Leaving
   # An unquoted field can be zero-length.
   main := |*
     field col_sep;
@@ -466,6 +469,13 @@ static VALUE raw_parse(int argc, VALUE *argv, VALUE self) {
     else if (io) {
       have = pe - ts;
       memmove(buf, ts, have);
+      // @see https://github.com/hpricot/hpricot/blob/master/ext/hpricot_scan/hpricot_scan.rl#L92
+      if (d->start > ts) {
+        d->start = buf + (d->start - ts);
+      }
+      if (mark_row_sep > ts) {
+        mark_row_sep = buf + (mark_row_sep - ts);
+      }
       te = buf + (te - ts);
       ts = buf;
     }

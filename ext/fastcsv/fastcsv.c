@@ -38,7 +38,7 @@ typedef struct {
 } Data;
 
 
-#line 169 "ext/fastcsv/fastcsv.rl"
+#line 172 "ext/fastcsv/fastcsv.rl"
 
 
 
@@ -50,7 +50,7 @@ static const int raw_parse_error = 0;
 static const int raw_parse_en_main = 5;
 
 
-#line 172 "ext/fastcsv/fastcsv.rl"
+#line 175 "ext/fastcsv/fastcsv.rl"
 
 // 16 kB
 #define BUFSIZE 16384
@@ -270,7 +270,7 @@ static VALUE raw_parse(int argc, VALUE *argv, VALUE self) {
 	act = 0;
 	}
 
-#line 383 "ext/fastcsv/fastcsv.rl"
+#line 386 "ext/fastcsv/fastcsv.rl"
 
   while (!done) {
     VALUE str;
@@ -363,7 +363,7 @@ tr5:
       ENCODE;
     }
   }
-#line 137 "ext/fastcsv/fastcsv.rl"
+#line 138 "ext/fastcsv/fastcsv.rl"
 	{
     if (d->start == 0 || p == d->start) { // same as new_row
       rb_ivar_set(self, s_row, rb_str_new2(""));
@@ -380,7 +380,7 @@ tr5:
       rb_yield(row);
     }
   }
-#line 167 "ext/fastcsv/fastcsv.rl"
+#line 170 "ext/fastcsv/fastcsv.rl"
 	{te = p+1;}
 	goto st5;
 tr6:
@@ -400,7 +400,7 @@ tr6:
     rb_ary_push(row, field);
     field = Qnil;
   }
-#line 165 "ext/fastcsv/fastcsv.rl"
+#line 168 "ext/fastcsv/fastcsv.rl"
 	{te = p+1;}
 	goto st5;
 tr7:
@@ -420,9 +420,9 @@ tr7:
     rb_ary_push(row, field);
     field = Qnil;
   }
-#line 165 "ext/fastcsv/fastcsv.rl"
+#line 168 "ext/fastcsv/fastcsv.rl"
 	{te = p+1;}
-#line 137 "ext/fastcsv/fastcsv.rl"
+#line 138 "ext/fastcsv/fastcsv.rl"
 	{
     if (d->start == 0 || p == d->start) { // same as new_row
       rb_ivar_set(self, s_row, rb_str_new2(""));
@@ -441,7 +441,7 @@ tr7:
   }
 	goto st5;
 tr13:
-#line 137 "ext/fastcsv/fastcsv.rl"
+#line 138 "ext/fastcsv/fastcsv.rl"
 	{
     if (d->start == 0 || p == d->start) { // same as new_row
       rb_ivar_set(self, s_row, rb_str_new2(""));
@@ -458,7 +458,7 @@ tr13:
       rb_yield(row);
     }
   }
-#line 167 "ext/fastcsv/fastcsv.rl"
+#line 170 "ext/fastcsv/fastcsv.rl"
 	{te = p+1;}
 	goto st5;
 tr19:
@@ -467,7 +467,7 @@ tr19:
     rb_ary_push(row, field);
     field = Qnil;
   }
-#line 165 "ext/fastcsv/fastcsv.rl"
+#line 168 "ext/fastcsv/fastcsv.rl"
 	{te = p+1;}
 	goto st5;
 tr20:
@@ -476,9 +476,9 @@ tr20:
     rb_ary_push(row, field);
     field = Qnil;
   }
-#line 165 "ext/fastcsv/fastcsv.rl"
+#line 168 "ext/fastcsv/fastcsv.rl"
 	{te = p+1;}
-#line 137 "ext/fastcsv/fastcsv.rl"
+#line 138 "ext/fastcsv/fastcsv.rl"
 	{
     if (d->start == 0 || p == d->start) { // same as new_row
       rb_ivar_set(self, s_row, rb_str_new2(""));
@@ -497,7 +497,7 @@ tr20:
   }
 	goto st5;
 tr42:
-#line 167 "ext/fastcsv/fastcsv.rl"
+#line 170 "ext/fastcsv/fastcsv.rl"
 	{te = p;p--;}
 	goto st5;
 tr43:
@@ -509,7 +509,7 @@ tr43:
       if (p - mark_row_sep != len_row_sep || row_sep[0] != *mark_row_sep || (len_row_sep == 2 && row_sep[1] != *(mark_row_sep + 1))) {
         FREE;
 
-        rb_raise(eError, "Unquoted fields do not allow \\r or \\n (line %d).", curline - 1);
+        rb_raise(eError, "Unquoted fields do not allow \\r or \\n (line %d).", curline);
       }
     }
     else {
@@ -517,6 +517,8 @@ tr43:
       row_sep = ALLOC_N(char, len_row_sep);
       memcpy(row_sep, mark_row_sep, len_row_sep);
     }
+
+    curline++;
   }
 #line 1 "NONE"
 	{	switch( act ) {
@@ -538,7 +540,7 @@ tr50:
       if (p - mark_row_sep != len_row_sep || row_sep[0] != *mark_row_sep || (len_row_sep == 2 && row_sep[1] != *(mark_row_sep + 1))) {
         FREE;
 
-        rb_raise(eError, "Unquoted fields do not allow \\r or \\n (line %d).", curline - 1);
+        rb_raise(eError, "Unquoted fields do not allow \\r or \\n (line %d).", curline);
       }
     }
     else {
@@ -546,8 +548,10 @@ tr50:
       row_sep = ALLOC_N(char, len_row_sep);
       memcpy(row_sep, mark_row_sep, len_row_sep);
     }
+
+    curline++;
   }
-#line 137 "ext/fastcsv/fastcsv.rl"
+#line 138 "ext/fastcsv/fastcsv.rl"
 	{
     if (d->start == 0 || p == d->start) { // same as new_row
       rb_ivar_set(self, s_row, rb_str_new2(""));
@@ -564,7 +568,7 @@ tr50:
       rb_yield(row);
     }
   }
-#line 167 "ext/fastcsv/fastcsv.rl"
+#line 170 "ext/fastcsv/fastcsv.rl"
 	{te = p+1;}
 	goto st5;
 tr56:
@@ -573,7 +577,7 @@ tr56:
     rb_ary_push(row, field);
     field = Qnil;
   }
-#line 165 "ext/fastcsv/fastcsv.rl"
+#line 168 "ext/fastcsv/fastcsv.rl"
 	{te = p+1;}
 #line 100 "ext/fastcsv/fastcsv.rl"
 	{
@@ -583,7 +587,7 @@ tr56:
       if (p - mark_row_sep != len_row_sep || row_sep[0] != *mark_row_sep || (len_row_sep == 2 && row_sep[1] != *(mark_row_sep + 1))) {
         FREE;
 
-        rb_raise(eError, "Unquoted fields do not allow \\r or \\n (line %d).", curline - 1);
+        rb_raise(eError, "Unquoted fields do not allow \\r or \\n (line %d).", curline);
       }
     }
     else {
@@ -591,8 +595,10 @@ tr56:
       row_sep = ALLOC_N(char, len_row_sep);
       memcpy(row_sep, mark_row_sep, len_row_sep);
     }
+
+    curline++;
   }
-#line 137 "ext/fastcsv/fastcsv.rl"
+#line 138 "ext/fastcsv/fastcsv.rl"
 	{
     if (d->start == 0 || p == d->start) { // same as new_row
       rb_ivar_set(self, s_row, rb_str_new2(""));
@@ -620,14 +626,14 @@ st5:
 case 5:
 #line 1 "NONE"
 	{ts = p;}
-#line 624 "ext/fastcsv/fastcsv.c"
+#line 630 "ext/fastcsv/fastcsv.c"
 	_widec = (*p);
 	_widec = (short)(1152 + ((*p) - -128));
 	if ( 
-#line 155 "ext/fastcsv/fastcsv.rl"
+#line 156 "ext/fastcsv/fastcsv.rl"
  (*p) == quote_char  ) _widec += 256;
 	if ( 
-#line 156 "ext/fastcsv/fastcsv.rl"
+#line 157 "ext/fastcsv/fastcsv.rl"
  (*p) == col_sep  ) _widec += 512;
 	switch( _widec ) {
 		case 1280: goto tr33;
@@ -665,10 +671,10 @@ case 1:
 	_widec = (*p);
 	_widec = (short)(1152 + ((*p) - -128));
 	if ( 
-#line 155 "ext/fastcsv/fastcsv.rl"
+#line 156 "ext/fastcsv/fastcsv.rl"
  (*p) == quote_char  ) _widec += 256;
 	if ( 
-#line 156 "ext/fastcsv/fastcsv.rl"
+#line 157 "ext/fastcsv/fastcsv.rl"
  (*p) == col_sep  ) _widec += 512;
 	switch( _widec ) {
 		case 1280: goto tr2;
@@ -704,7 +710,7 @@ tr2:
       ENCODE;
     }
   }
-#line 137 "ext/fastcsv/fastcsv.rl"
+#line 138 "ext/fastcsv/fastcsv.rl"
 	{
     if (d->start == 0 || p == d->start) { // same as new_row
       rb_ivar_set(self, s_row, rb_str_new2(""));
@@ -721,21 +727,21 @@ tr2:
       rb_yield(row);
     }
   }
-#line 167 "ext/fastcsv/fastcsv.rl"
+#line 170 "ext/fastcsv/fastcsv.rl"
 	{act = 3;}
 	goto st6;
 st6:
 	if ( ++p == pe )
 		goto _test_eof6;
 case 6:
-#line 732 "ext/fastcsv/fastcsv.c"
+#line 738 "ext/fastcsv/fastcsv.c"
 	_widec = (*p);
 	_widec = (short)(1152 + ((*p) - -128));
 	if ( 
-#line 155 "ext/fastcsv/fastcsv.rl"
+#line 156 "ext/fastcsv/fastcsv.rl"
  (*p) == quote_char  ) _widec += 256;
 	if ( 
-#line 156 "ext/fastcsv/fastcsv.rl"
+#line 157 "ext/fastcsv/fastcsv.rl"
  (*p) == col_sep  ) _widec += 512;
 	switch( _widec ) {
 		case 1280: goto tr2;
@@ -771,10 +777,9 @@ tr3:
       ENCODE;
     }
   }
-#line 117 "ext/fastcsv/fastcsv.rl"
+#line 119 "ext/fastcsv/fastcsv.rl"
 	{
     mark_row_sep = p;
-    curline++;
 
     if (d->start == 0 || p == d->start) {
       rb_ivar_set(self, s_row, rb_str_new2(""));
@@ -791,7 +796,7 @@ tr3:
     rb_yield(row);
     row = rb_ary_new();
   }
-#line 166 "ext/fastcsv/fastcsv.rl"
+#line 169 "ext/fastcsv/fastcsv.rl"
 	{act = 2;}
 	goto st7;
 tr8:
@@ -813,12 +818,11 @@ tr8:
     rb_ary_push(row, field);
     field = Qnil;
   }
-#line 165 "ext/fastcsv/fastcsv.rl"
+#line 168 "ext/fastcsv/fastcsv.rl"
 	{act = 1;}
-#line 117 "ext/fastcsv/fastcsv.rl"
+#line 119 "ext/fastcsv/fastcsv.rl"
 	{
     mark_row_sep = p;
-    curline++;
 
     if (d->start == 0 || p == d->start) {
       rb_ivar_set(self, s_row, rb_str_new2(""));
@@ -839,10 +843,9 @@ tr8:
 tr14:
 #line 1 "NONE"
 	{te = p+1;}
-#line 117 "ext/fastcsv/fastcsv.rl"
+#line 119 "ext/fastcsv/fastcsv.rl"
 	{
     mark_row_sep = p;
-    curline++;
 
     if (d->start == 0 || p == d->start) {
       rb_ivar_set(self, s_row, rb_str_new2(""));
@@ -859,7 +862,7 @@ tr14:
     rb_yield(row);
     row = rb_ary_new();
   }
-#line 166 "ext/fastcsv/fastcsv.rl"
+#line 169 "ext/fastcsv/fastcsv.rl"
 	{act = 2;}
 	goto st7;
 tr21:
@@ -870,12 +873,11 @@ tr21:
     rb_ary_push(row, field);
     field = Qnil;
   }
-#line 165 "ext/fastcsv/fastcsv.rl"
+#line 168 "ext/fastcsv/fastcsv.rl"
 	{act = 1;}
-#line 117 "ext/fastcsv/fastcsv.rl"
+#line 119 "ext/fastcsv/fastcsv.rl"
 	{
     mark_row_sep = p;
-    curline++;
 
     if (d->start == 0 || p == d->start) {
       rb_ivar_set(self, s_row, rb_str_new2(""));
@@ -896,14 +898,14 @@ tr21:
 tr44:
 #line 1 "NONE"
 	{te = p+1;}
-#line 166 "ext/fastcsv/fastcsv.rl"
+#line 169 "ext/fastcsv/fastcsv.rl"
 	{act = 2;}
 	goto st7;
 st7:
 	if ( ++p == pe )
 		goto _test_eof7;
 case 7:
-#line 907 "ext/fastcsv/fastcsv.c"
+#line 909 "ext/fastcsv/fastcsv.c"
 	goto tr43;
 tr4:
 #line 1 "NONE"
@@ -919,10 +921,9 @@ tr4:
       ENCODE;
     }
   }
-#line 117 "ext/fastcsv/fastcsv.rl"
+#line 119 "ext/fastcsv/fastcsv.rl"
 	{
     mark_row_sep = p;
-    curline++;
 
     if (d->start == 0 || p == d->start) {
       rb_ivar_set(self, s_row, rb_str_new2(""));
@@ -939,7 +940,7 @@ tr4:
     rb_yield(row);
     row = rb_ary_new();
   }
-#line 166 "ext/fastcsv/fastcsv.rl"
+#line 169 "ext/fastcsv/fastcsv.rl"
 	{act = 2;}
 	goto st8;
 tr9:
@@ -961,12 +962,11 @@ tr9:
     rb_ary_push(row, field);
     field = Qnil;
   }
-#line 165 "ext/fastcsv/fastcsv.rl"
+#line 168 "ext/fastcsv/fastcsv.rl"
 	{act = 1;}
-#line 117 "ext/fastcsv/fastcsv.rl"
+#line 119 "ext/fastcsv/fastcsv.rl"
 	{
     mark_row_sep = p;
-    curline++;
 
     if (d->start == 0 || p == d->start) {
       rb_ivar_set(self, s_row, rb_str_new2(""));
@@ -987,10 +987,9 @@ tr9:
 tr15:
 #line 1 "NONE"
 	{te = p+1;}
-#line 117 "ext/fastcsv/fastcsv.rl"
+#line 119 "ext/fastcsv/fastcsv.rl"
 	{
     mark_row_sep = p;
-    curline++;
 
     if (d->start == 0 || p == d->start) {
       rb_ivar_set(self, s_row, rb_str_new2(""));
@@ -1007,7 +1006,7 @@ tr15:
     rb_yield(row);
     row = rb_ary_new();
   }
-#line 166 "ext/fastcsv/fastcsv.rl"
+#line 169 "ext/fastcsv/fastcsv.rl"
 	{act = 2;}
 	goto st8;
 tr22:
@@ -1018,12 +1017,11 @@ tr22:
     rb_ary_push(row, field);
     field = Qnil;
   }
-#line 165 "ext/fastcsv/fastcsv.rl"
+#line 168 "ext/fastcsv/fastcsv.rl"
 	{act = 1;}
-#line 117 "ext/fastcsv/fastcsv.rl"
+#line 119 "ext/fastcsv/fastcsv.rl"
 	{
     mark_row_sep = p;
-    curline++;
 
     if (d->start == 0 || p == d->start) {
       rb_ivar_set(self, s_row, rb_str_new2(""));
@@ -1045,7 +1043,7 @@ st8:
 	if ( ++p == pe )
 		goto _test_eof8;
 case 8:
-#line 1049 "ext/fastcsv/fastcsv.c"
+#line 1047 "ext/fastcsv/fastcsv.c"
 	if ( (*p) == 10 )
 		goto tr44;
 	goto tr43;
@@ -1063,7 +1061,7 @@ tr33:
       ENCODE;
     }
   }
-#line 137 "ext/fastcsv/fastcsv.rl"
+#line 138 "ext/fastcsv/fastcsv.rl"
 	{
     if (d->start == 0 || p == d->start) { // same as new_row
       rb_ivar_set(self, s_row, rb_str_new2(""));
@@ -1080,21 +1078,21 @@ tr33:
       rb_yield(row);
     }
   }
-#line 167 "ext/fastcsv/fastcsv.rl"
+#line 170 "ext/fastcsv/fastcsv.rl"
 	{act = 3;}
 	goto st9;
 st9:
 	if ( ++p == pe )
 		goto _test_eof9;
 case 9:
-#line 1091 "ext/fastcsv/fastcsv.c"
+#line 1089 "ext/fastcsv/fastcsv.c"
 	_widec = (*p);
 	_widec = (short)(1152 + ((*p) - -128));
 	if ( 
-#line 155 "ext/fastcsv/fastcsv.rl"
+#line 156 "ext/fastcsv/fastcsv.rl"
  (*p) == quote_char  ) _widec += 256;
 	if ( 
-#line 156 "ext/fastcsv/fastcsv.rl"
+#line 157 "ext/fastcsv/fastcsv.rl"
  (*p) == col_sep  ) _widec += 512;
 	if ( _widec < 1291 ) {
 		if ( 1152 <= _widec && _widec <= 1289 )
@@ -1120,7 +1118,7 @@ tr45:
       if (p - mark_row_sep != len_row_sep || row_sep[0] != *mark_row_sep || (len_row_sep == 2 && row_sep[1] != *(mark_row_sep + 1))) {
         FREE;
 
-        rb_raise(eError, "Unquoted fields do not allow \\r or \\n (line %d).", curline - 1);
+        rb_raise(eError, "Unquoted fields do not allow \\r or \\n (line %d).", curline);
       }
     }
     else {
@@ -1128,6 +1126,8 @@ tr45:
       row_sep = ALLOC_N(char, len_row_sep);
       memcpy(row_sep, mark_row_sep, len_row_sep);
     }
+
+    curline++;
   }
 	goto st2;
 st2:
@@ -1138,7 +1138,7 @@ case 2:
 	_widec = (*p);
 	_widec = (short)(128 + ((*p) - -128));
 	if ( 
-#line 155 "ext/fastcsv/fastcsv.rl"
+#line 156 "ext/fastcsv/fastcsv.rl"
  (*p) == quote_char  ) _widec += 256;
 	switch( _widec ) {
 		case 522: goto tr12;
@@ -1242,7 +1242,7 @@ tr46:
       if (p - mark_row_sep != len_row_sep || row_sep[0] != *mark_row_sep || (len_row_sep == 2 && row_sep[1] != *(mark_row_sep + 1))) {
         FREE;
 
-        rb_raise(eError, "Unquoted fields do not allow \\r or \\n (line %d).", curline - 1);
+        rb_raise(eError, "Unquoted fields do not allow \\r or \\n (line %d).", curline);
       }
     }
     else {
@@ -1250,20 +1250,22 @@ tr46:
       row_sep = ALLOC_N(char, len_row_sep);
       memcpy(row_sep, mark_row_sep, len_row_sep);
     }
+
+    curline++;
   }
 	goto st3;
 st3:
 	if ( ++p == pe )
 		goto _test_eof3;
 case 3:
-#line 1260 "ext/fastcsv/fastcsv.c"
+#line 1262 "ext/fastcsv/fastcsv.c"
 	_widec = (*p);
 	_widec = (short)(1152 + ((*p) - -128));
 	if ( 
-#line 155 "ext/fastcsv/fastcsv.rl"
+#line 156 "ext/fastcsv/fastcsv.rl"
  (*p) == quote_char  ) _widec += 256;
 	if ( 
-#line 156 "ext/fastcsv/fastcsv.rl"
+#line 157 "ext/fastcsv/fastcsv.rl"
  (*p) == col_sep  ) _widec += 512;
 	switch( _widec ) {
 		case 1280: goto tr13;
@@ -1291,7 +1293,7 @@ case 3:
 tr16:
 #line 1 "NONE"
 	{te = p+1;}
-#line 137 "ext/fastcsv/fastcsv.rl"
+#line 138 "ext/fastcsv/fastcsv.rl"
 	{
     if (d->start == 0 || p == d->start) { // same as new_row
       rb_ivar_set(self, s_row, rb_str_new2(""));
@@ -1308,7 +1310,7 @@ tr16:
       rb_yield(row);
     }
   }
-#line 167 "ext/fastcsv/fastcsv.rl"
+#line 170 "ext/fastcsv/fastcsv.rl"
 	{act = 3;}
 	goto st10;
 tr23:
@@ -1319,7 +1321,7 @@ tr23:
     rb_ary_push(row, field);
     field = Qnil;
   }
-#line 165 "ext/fastcsv/fastcsv.rl"
+#line 168 "ext/fastcsv/fastcsv.rl"
 	{act = 1;}
 	goto st10;
 tr24:
@@ -1330,9 +1332,9 @@ tr24:
     rb_ary_push(row, field);
     field = Qnil;
   }
-#line 165 "ext/fastcsv/fastcsv.rl"
+#line 168 "ext/fastcsv/fastcsv.rl"
 	{act = 1;}
-#line 137 "ext/fastcsv/fastcsv.rl"
+#line 138 "ext/fastcsv/fastcsv.rl"
 	{
     if (d->start == 0 || p == d->start) { // same as new_row
       rb_ivar_set(self, s_row, rb_str_new2(""));
@@ -1368,7 +1370,7 @@ tr35:
       ENCODE;
     }
   }
-#line 137 "ext/fastcsv/fastcsv.rl"
+#line 138 "ext/fastcsv/fastcsv.rl"
 	{
     if (d->start == 0 || p == d->start) { // same as new_row
       rb_ivar_set(self, s_row, rb_str_new2(""));
@@ -1385,7 +1387,7 @@ tr35:
       rb_yield(row);
     }
   }
-#line 167 "ext/fastcsv/fastcsv.rl"
+#line 170 "ext/fastcsv/fastcsv.rl"
 	{act = 3;}
 	goto st10;
 tr38:
@@ -1411,7 +1413,7 @@ tr38:
     rb_ary_push(row, field);
     field = Qnil;
   }
-#line 165 "ext/fastcsv/fastcsv.rl"
+#line 168 "ext/fastcsv/fastcsv.rl"
 	{act = 1;}
 	goto st10;
 tr39:
@@ -1437,9 +1439,9 @@ tr39:
     rb_ary_push(row, field);
     field = Qnil;
   }
-#line 165 "ext/fastcsv/fastcsv.rl"
+#line 168 "ext/fastcsv/fastcsv.rl"
 	{act = 1;}
-#line 137 "ext/fastcsv/fastcsv.rl"
+#line 138 "ext/fastcsv/fastcsv.rl"
 	{
     if (d->start == 0 || p == d->start) { // same as new_row
       rb_ivar_set(self, s_row, rb_str_new2(""));
@@ -1465,7 +1467,7 @@ tr55:
     rb_ary_push(row, field);
     field = Qnil;
   }
-#line 165 "ext/fastcsv/fastcsv.rl"
+#line 168 "ext/fastcsv/fastcsv.rl"
 	{act = 1;}
 #line 100 "ext/fastcsv/fastcsv.rl"
 	{
@@ -1475,7 +1477,7 @@ tr55:
       if (p - mark_row_sep != len_row_sep || row_sep[0] != *mark_row_sep || (len_row_sep == 2 && row_sep[1] != *(mark_row_sep + 1))) {
         FREE;
 
-        rb_raise(eError, "Unquoted fields do not allow \\r or \\n (line %d).", curline - 1);
+        rb_raise(eError, "Unquoted fields do not allow \\r or \\n (line %d).", curline);
       }
     }
     else {
@@ -1483,17 +1485,19 @@ tr55:
       row_sep = ALLOC_N(char, len_row_sep);
       memcpy(row_sep, mark_row_sep, len_row_sep);
     }
+
+    curline++;
   }
 	goto st10;
 st10:
 	if ( ++p == pe )
 		goto _test_eof10;
 case 10:
-#line 1493 "ext/fastcsv/fastcsv.c"
+#line 1497 "ext/fastcsv/fastcsv.c"
 	_widec = (*p);
 	_widec = (short)(128 + ((*p) - -128));
 	if ( 
-#line 155 "ext/fastcsv/fastcsv.rl"
+#line 156 "ext/fastcsv/fastcsv.rl"
  (*p) == quote_char  ) _widec += 256;
 	switch( _widec ) {
 		case 522: goto tr12;
@@ -1597,7 +1601,7 @@ tr47:
       if (p - mark_row_sep != len_row_sep || row_sep[0] != *mark_row_sep || (len_row_sep == 2 && row_sep[1] != *(mark_row_sep + 1))) {
         FREE;
 
-        rb_raise(eError, "Unquoted fields do not allow \\r or \\n (line %d).", curline - 1);
+        rb_raise(eError, "Unquoted fields do not allow \\r or \\n (line %d).", curline);
       }
     }
     else {
@@ -1605,20 +1609,22 @@ tr47:
       row_sep = ALLOC_N(char, len_row_sep);
       memcpy(row_sep, mark_row_sep, len_row_sep);
     }
+
+    curline++;
   }
 	goto st4;
 st4:
 	if ( ++p == pe )
 		goto _test_eof4;
 case 4:
-#line 1615 "ext/fastcsv/fastcsv.c"
+#line 1621 "ext/fastcsv/fastcsv.c"
 	_widec = (*p);
 	_widec = (short)(1152 + ((*p) - -128));
 	if ( 
-#line 155 "ext/fastcsv/fastcsv.rl"
+#line 156 "ext/fastcsv/fastcsv.rl"
  (*p) == quote_char  ) _widec += 256;
 	if ( 
-#line 156 "ext/fastcsv/fastcsv.rl"
+#line 157 "ext/fastcsv/fastcsv.rl"
  (*p) == col_sep  ) _widec += 512;
 	switch( _widec ) {
 		case 1280: goto tr13;
@@ -1649,10 +1655,9 @@ case 4:
 tr17:
 #line 1 "NONE"
 	{te = p+1;}
-#line 117 "ext/fastcsv/fastcsv.rl"
+#line 119 "ext/fastcsv/fastcsv.rl"
 	{
     mark_row_sep = p;
-    curline++;
 
     if (d->start == 0 || p == d->start) {
       rb_ivar_set(self, s_row, rb_str_new2(""));
@@ -1669,7 +1674,7 @@ tr17:
     rb_yield(row);
     row = rb_ary_new();
   }
-#line 166 "ext/fastcsv/fastcsv.rl"
+#line 169 "ext/fastcsv/fastcsv.rl"
 	{act = 2;}
 	goto st11;
 tr25:
@@ -1680,12 +1685,11 @@ tr25:
     rb_ary_push(row, field);
     field = Qnil;
   }
-#line 165 "ext/fastcsv/fastcsv.rl"
+#line 168 "ext/fastcsv/fastcsv.rl"
 	{act = 1;}
-#line 117 "ext/fastcsv/fastcsv.rl"
+#line 119 "ext/fastcsv/fastcsv.rl"
 	{
     mark_row_sep = p;
-    curline++;
 
     if (d->start == 0 || p == d->start) {
       rb_ivar_set(self, s_row, rb_str_new2(""));
@@ -1721,10 +1725,9 @@ tr36:
       ENCODE;
     }
   }
-#line 117 "ext/fastcsv/fastcsv.rl"
+#line 119 "ext/fastcsv/fastcsv.rl"
 	{
     mark_row_sep = p;
-    curline++;
 
     if (d->start == 0 || p == d->start) {
       rb_ivar_set(self, s_row, rb_str_new2(""));
@@ -1741,7 +1744,7 @@ tr36:
     rb_yield(row);
     row = rb_ary_new();
   }
-#line 166 "ext/fastcsv/fastcsv.rl"
+#line 169 "ext/fastcsv/fastcsv.rl"
 	{act = 2;}
 	goto st11;
 tr40:
@@ -1767,12 +1770,11 @@ tr40:
     rb_ary_push(row, field);
     field = Qnil;
   }
-#line 165 "ext/fastcsv/fastcsv.rl"
+#line 168 "ext/fastcsv/fastcsv.rl"
 	{act = 1;}
-#line 117 "ext/fastcsv/fastcsv.rl"
+#line 119 "ext/fastcsv/fastcsv.rl"
 	{
     mark_row_sep = p;
-    curline++;
 
     if (d->start == 0 || p == d->start) {
       rb_ivar_set(self, s_row, rb_str_new2(""));
@@ -1801,7 +1803,7 @@ tr48:
       if (p - mark_row_sep != len_row_sep || row_sep[0] != *mark_row_sep || (len_row_sep == 2 && row_sep[1] != *(mark_row_sep + 1))) {
         FREE;
 
-        rb_raise(eError, "Unquoted fields do not allow \\r or \\n (line %d).", curline - 1);
+        rb_raise(eError, "Unquoted fields do not allow \\r or \\n (line %d).", curline);
       }
     }
     else {
@@ -1809,17 +1811,18 @@ tr48:
       row_sep = ALLOC_N(char, len_row_sep);
       memcpy(row_sep, mark_row_sep, len_row_sep);
     }
+
+    curline++;
   }
-#line 166 "ext/fastcsv/fastcsv.rl"
+#line 169 "ext/fastcsv/fastcsv.rl"
 	{act = 2;}
 	goto st11;
 tr51:
 #line 1 "NONE"
 	{te = p+1;}
-#line 117 "ext/fastcsv/fastcsv.rl"
+#line 119 "ext/fastcsv/fastcsv.rl"
 	{
     mark_row_sep = p;
-    curline++;
 
     if (d->start == 0 || p == d->start) {
       rb_ivar_set(self, s_row, rb_str_new2(""));
@@ -1844,7 +1847,7 @@ tr51:
       if (p - mark_row_sep != len_row_sep || row_sep[0] != *mark_row_sep || (len_row_sep == 2 && row_sep[1] != *(mark_row_sep + 1))) {
         FREE;
 
-        rb_raise(eError, "Unquoted fields do not allow \\r or \\n (line %d).", curline - 1);
+        rb_raise(eError, "Unquoted fields do not allow \\r or \\n (line %d).", curline);
       }
     }
     else {
@@ -1852,8 +1855,10 @@ tr51:
       row_sep = ALLOC_N(char, len_row_sep);
       memcpy(row_sep, mark_row_sep, len_row_sep);
     }
+
+    curline++;
   }
-#line 166 "ext/fastcsv/fastcsv.rl"
+#line 169 "ext/fastcsv/fastcsv.rl"
 	{act = 2;}
 	goto st11;
 tr57:
@@ -1864,12 +1869,11 @@ tr57:
     rb_ary_push(row, field);
     field = Qnil;
   }
-#line 165 "ext/fastcsv/fastcsv.rl"
+#line 168 "ext/fastcsv/fastcsv.rl"
 	{act = 1;}
-#line 117 "ext/fastcsv/fastcsv.rl"
+#line 119 "ext/fastcsv/fastcsv.rl"
 	{
     mark_row_sep = p;
-    curline++;
 
     if (d->start == 0 || p == d->start) {
       rb_ivar_set(self, s_row, rb_str_new2(""));
@@ -1894,7 +1898,7 @@ tr57:
       if (p - mark_row_sep != len_row_sep || row_sep[0] != *mark_row_sep || (len_row_sep == 2 && row_sep[1] != *(mark_row_sep + 1))) {
         FREE;
 
-        rb_raise(eError, "Unquoted fields do not allow \\r or \\n (line %d).", curline - 1);
+        rb_raise(eError, "Unquoted fields do not allow \\r or \\n (line %d).", curline);
       }
     }
     else {
@@ -1902,17 +1906,19 @@ tr57:
       row_sep = ALLOC_N(char, len_row_sep);
       memcpy(row_sep, mark_row_sep, len_row_sep);
     }
+
+    curline++;
   }
 	goto st11;
 st11:
 	if ( ++p == pe )
 		goto _test_eof11;
 case 11:
-#line 1912 "ext/fastcsv/fastcsv.c"
+#line 1918 "ext/fastcsv/fastcsv.c"
 	_widec = (*p);
 	_widec = (short)(128 + ((*p) - -128));
 	if ( 
-#line 155 "ext/fastcsv/fastcsv.rl"
+#line 156 "ext/fastcsv/fastcsv.rl"
  (*p) == quote_char  ) _widec += 256;
 	switch( _widec ) {
 		case 256: goto tr43;
@@ -1928,10 +1934,9 @@ case 11:
 tr18:
 #line 1 "NONE"
 	{te = p+1;}
-#line 117 "ext/fastcsv/fastcsv.rl"
+#line 119 "ext/fastcsv/fastcsv.rl"
 	{
     mark_row_sep = p;
-    curline++;
 
     if (d->start == 0 || p == d->start) {
       rb_ivar_set(self, s_row, rb_str_new2(""));
@@ -1948,7 +1953,7 @@ tr18:
     rb_yield(row);
     row = rb_ary_new();
   }
-#line 166 "ext/fastcsv/fastcsv.rl"
+#line 169 "ext/fastcsv/fastcsv.rl"
 	{act = 2;}
 	goto st12;
 tr26:
@@ -1959,12 +1964,11 @@ tr26:
     rb_ary_push(row, field);
     field = Qnil;
   }
-#line 165 "ext/fastcsv/fastcsv.rl"
+#line 168 "ext/fastcsv/fastcsv.rl"
 	{act = 1;}
-#line 117 "ext/fastcsv/fastcsv.rl"
+#line 119 "ext/fastcsv/fastcsv.rl"
 	{
     mark_row_sep = p;
-    curline++;
 
     if (d->start == 0 || p == d->start) {
       rb_ivar_set(self, s_row, rb_str_new2(""));
@@ -2000,10 +2004,9 @@ tr37:
       ENCODE;
     }
   }
-#line 117 "ext/fastcsv/fastcsv.rl"
+#line 119 "ext/fastcsv/fastcsv.rl"
 	{
     mark_row_sep = p;
-    curline++;
 
     if (d->start == 0 || p == d->start) {
       rb_ivar_set(self, s_row, rb_str_new2(""));
@@ -2020,7 +2023,7 @@ tr37:
     rb_yield(row);
     row = rb_ary_new();
   }
-#line 166 "ext/fastcsv/fastcsv.rl"
+#line 169 "ext/fastcsv/fastcsv.rl"
 	{act = 2;}
 	goto st12;
 tr41:
@@ -2046,12 +2049,11 @@ tr41:
     rb_ary_push(row, field);
     field = Qnil;
   }
-#line 165 "ext/fastcsv/fastcsv.rl"
+#line 168 "ext/fastcsv/fastcsv.rl"
 	{act = 1;}
-#line 117 "ext/fastcsv/fastcsv.rl"
+#line 119 "ext/fastcsv/fastcsv.rl"
 	{
     mark_row_sep = p;
-    curline++;
 
     if (d->start == 0 || p == d->start) {
       rb_ivar_set(self, s_row, rb_str_new2(""));
@@ -2072,10 +2074,9 @@ tr41:
 tr52:
 #line 1 "NONE"
 	{te = p+1;}
-#line 117 "ext/fastcsv/fastcsv.rl"
+#line 119 "ext/fastcsv/fastcsv.rl"
 	{
     mark_row_sep = p;
-    curline++;
 
     if (d->start == 0 || p == d->start) {
       rb_ivar_set(self, s_row, rb_str_new2(""));
@@ -2100,7 +2101,7 @@ tr52:
       if (p - mark_row_sep != len_row_sep || row_sep[0] != *mark_row_sep || (len_row_sep == 2 && row_sep[1] != *(mark_row_sep + 1))) {
         FREE;
 
-        rb_raise(eError, "Unquoted fields do not allow \\r or \\n (line %d).", curline - 1);
+        rb_raise(eError, "Unquoted fields do not allow \\r or \\n (line %d).", curline);
       }
     }
     else {
@@ -2108,8 +2109,10 @@ tr52:
       row_sep = ALLOC_N(char, len_row_sep);
       memcpy(row_sep, mark_row_sep, len_row_sep);
     }
+
+    curline++;
   }
-#line 166 "ext/fastcsv/fastcsv.rl"
+#line 169 "ext/fastcsv/fastcsv.rl"
 	{act = 2;}
 	goto st12;
 tr58:
@@ -2120,12 +2123,11 @@ tr58:
     rb_ary_push(row, field);
     field = Qnil;
   }
-#line 165 "ext/fastcsv/fastcsv.rl"
+#line 168 "ext/fastcsv/fastcsv.rl"
 	{act = 1;}
-#line 117 "ext/fastcsv/fastcsv.rl"
+#line 119 "ext/fastcsv/fastcsv.rl"
 	{
     mark_row_sep = p;
-    curline++;
 
     if (d->start == 0 || p == d->start) {
       rb_ivar_set(self, s_row, rb_str_new2(""));
@@ -2150,7 +2152,7 @@ tr58:
       if (p - mark_row_sep != len_row_sep || row_sep[0] != *mark_row_sep || (len_row_sep == 2 && row_sep[1] != *(mark_row_sep + 1))) {
         FREE;
 
-        rb_raise(eError, "Unquoted fields do not allow \\r or \\n (line %d).", curline - 1);
+        rb_raise(eError, "Unquoted fields do not allow \\r or \\n (line %d).", curline);
       }
     }
     else {
@@ -2158,17 +2160,19 @@ tr58:
       row_sep = ALLOC_N(char, len_row_sep);
       memcpy(row_sep, mark_row_sep, len_row_sep);
     }
+
+    curline++;
   }
 	goto st12;
 st12:
 	if ( ++p == pe )
 		goto _test_eof12;
 case 12:
-#line 2168 "ext/fastcsv/fastcsv.c"
+#line 2172 "ext/fastcsv/fastcsv.c"
 	_widec = (*p);
 	_widec = (short)(128 + ((*p) - -128));
 	if ( 
-#line 155 "ext/fastcsv/fastcsv.rl"
+#line 156 "ext/fastcsv/fastcsv.rl"
  (*p) == quote_char  ) _widec += 256;
 	switch( _widec ) {
 		case 256: goto tr43;
@@ -2224,10 +2228,9 @@ tr28:
 	{
     unclosed_line = 0;
   }
-#line 117 "ext/fastcsv/fastcsv.rl"
+#line 119 "ext/fastcsv/fastcsv.rl"
 	{
     mark_row_sep = p;
-    curline++;
 
     if (d->start == 0 || p == d->start) {
       rb_ivar_set(self, s_row, rb_str_new2(""));
@@ -2244,7 +2247,7 @@ tr28:
     rb_yield(row);
     row = rb_ary_new();
   }
-#line 166 "ext/fastcsv/fastcsv.rl"
+#line 169 "ext/fastcsv/fastcsv.rl"
 	{act = 2;}
 	goto st13;
 tr31:
@@ -2294,12 +2297,11 @@ tr31:
     rb_ary_push(row, field);
     field = Qnil;
   }
-#line 165 "ext/fastcsv/fastcsv.rl"
+#line 168 "ext/fastcsv/fastcsv.rl"
 	{act = 1;}
-#line 117 "ext/fastcsv/fastcsv.rl"
+#line 119 "ext/fastcsv/fastcsv.rl"
 	{
     mark_row_sep = p;
-    curline++;
 
     if (d->start == 0 || p == d->start) {
       rb_ivar_set(self, s_row, rb_str_new2(""));
@@ -2367,7 +2369,7 @@ tr49:
       if (p - mark_row_sep != len_row_sep || row_sep[0] != *mark_row_sep || (len_row_sep == 2 && row_sep[1] != *(mark_row_sep + 1))) {
         FREE;
 
-        rb_raise(eError, "Unquoted fields do not allow \\r or \\n (line %d).", curline - 1);
+        rb_raise(eError, "Unquoted fields do not allow \\r or \\n (line %d).", curline);
       }
     }
     else {
@@ -2375,8 +2377,10 @@ tr49:
       row_sep = ALLOC_N(char, len_row_sep);
       memcpy(row_sep, mark_row_sep, len_row_sep);
     }
+
+    curline++;
   }
-#line 166 "ext/fastcsv/fastcsv.rl"
+#line 169 "ext/fastcsv/fastcsv.rl"
 	{act = 2;}
 	goto st13;
 tr54:
@@ -2421,10 +2425,9 @@ tr54:
 	{
     unclosed_line = 0;
   }
-#line 117 "ext/fastcsv/fastcsv.rl"
+#line 119 "ext/fastcsv/fastcsv.rl"
 	{
     mark_row_sep = p;
-    curline++;
 
     if (d->start == 0 || p == d->start) {
       rb_ivar_set(self, s_row, rb_str_new2(""));
@@ -2449,7 +2452,7 @@ tr54:
       if (p - mark_row_sep != len_row_sep || row_sep[0] != *mark_row_sep || (len_row_sep == 2 && row_sep[1] != *(mark_row_sep + 1))) {
         FREE;
 
-        rb_raise(eError, "Unquoted fields do not allow \\r or \\n (line %d).", curline - 1);
+        rb_raise(eError, "Unquoted fields do not allow \\r or \\n (line %d).", curline);
       }
     }
     else {
@@ -2457,8 +2460,10 @@ tr54:
       row_sep = ALLOC_N(char, len_row_sep);
       memcpy(row_sep, mark_row_sep, len_row_sep);
     }
+
+    curline++;
   }
-#line 166 "ext/fastcsv/fastcsv.rl"
+#line 169 "ext/fastcsv/fastcsv.rl"
 	{act = 2;}
 	goto st13;
 tr61:
@@ -2508,12 +2513,11 @@ tr61:
     rb_ary_push(row, field);
     field = Qnil;
   }
-#line 165 "ext/fastcsv/fastcsv.rl"
+#line 168 "ext/fastcsv/fastcsv.rl"
 	{act = 1;}
-#line 117 "ext/fastcsv/fastcsv.rl"
+#line 119 "ext/fastcsv/fastcsv.rl"
 	{
     mark_row_sep = p;
-    curline++;
 
     if (d->start == 0 || p == d->start) {
       rb_ivar_set(self, s_row, rb_str_new2(""));
@@ -2538,7 +2542,7 @@ tr61:
       if (p - mark_row_sep != len_row_sep || row_sep[0] != *mark_row_sep || (len_row_sep == 2 && row_sep[1] != *(mark_row_sep + 1))) {
         FREE;
 
-        rb_raise(eError, "Unquoted fields do not allow \\r or \\n (line %d).", curline - 1);
+        rb_raise(eError, "Unquoted fields do not allow \\r or \\n (line %d).", curline);
       }
     }
     else {
@@ -2546,20 +2550,22 @@ tr61:
       row_sep = ALLOC_N(char, len_row_sep);
       memcpy(row_sep, mark_row_sep, len_row_sep);
     }
+
+    curline++;
   }
 	goto st13;
 st13:
 	if ( ++p == pe )
 		goto _test_eof13;
 case 13:
-#line 2556 "ext/fastcsv/fastcsv.c"
+#line 2562 "ext/fastcsv/fastcsv.c"
 	_widec = (*p);
 	_widec = (short)(1152 + ((*p) - -128));
 	if ( 
-#line 155 "ext/fastcsv/fastcsv.rl"
+#line 156 "ext/fastcsv/fastcsv.rl"
  (*p) == quote_char  ) _widec += 256;
 	if ( 
-#line 156 "ext/fastcsv/fastcsv.rl"
+#line 157 "ext/fastcsv/fastcsv.rl"
  (*p) == col_sep  ) _widec += 512;
 	switch( _widec ) {
 		case 1280: goto tr50;
@@ -2629,7 +2635,7 @@ tr27:
 	{
     unclosed_line = 0;
   }
-#line 137 "ext/fastcsv/fastcsv.rl"
+#line 138 "ext/fastcsv/fastcsv.rl"
 	{
     if (d->start == 0 || p == d->start) { // same as new_row
       rb_ivar_set(self, s_row, rb_str_new2(""));
@@ -2646,7 +2652,7 @@ tr27:
       rb_yield(row);
     }
   }
-#line 167 "ext/fastcsv/fastcsv.rl"
+#line 170 "ext/fastcsv/fastcsv.rl"
 	{act = 3;}
 	goto st14;
 tr29:
@@ -2696,7 +2702,7 @@ tr29:
     rb_ary_push(row, field);
     field = Qnil;
   }
-#line 165 "ext/fastcsv/fastcsv.rl"
+#line 168 "ext/fastcsv/fastcsv.rl"
 	{act = 1;}
 	goto st14;
 tr30:
@@ -2746,9 +2752,9 @@ tr30:
     rb_ary_push(row, field);
     field = Qnil;
   }
-#line 165 "ext/fastcsv/fastcsv.rl"
+#line 168 "ext/fastcsv/fastcsv.rl"
 	{act = 1;}
-#line 137 "ext/fastcsv/fastcsv.rl"
+#line 138 "ext/fastcsv/fastcsv.rl"
 	{
     if (d->start == 0 || p == d->start) { // same as new_row
       rb_ivar_set(self, s_row, rb_str_new2(""));
@@ -2816,7 +2822,7 @@ tr53:
       if (p - mark_row_sep != len_row_sep || row_sep[0] != *mark_row_sep || (len_row_sep == 2 && row_sep[1] != *(mark_row_sep + 1))) {
         FREE;
 
-        rb_raise(eError, "Unquoted fields do not allow \\r or \\n (line %d).", curline - 1);
+        rb_raise(eError, "Unquoted fields do not allow \\r or \\n (line %d).", curline);
       }
     }
     else {
@@ -2824,8 +2830,10 @@ tr53:
       row_sep = ALLOC_N(char, len_row_sep);
       memcpy(row_sep, mark_row_sep, len_row_sep);
     }
+
+    curline++;
   }
-#line 137 "ext/fastcsv/fastcsv.rl"
+#line 138 "ext/fastcsv/fastcsv.rl"
 	{
     if (d->start == 0 || p == d->start) { // same as new_row
       rb_ivar_set(self, s_row, rb_str_new2(""));
@@ -2842,7 +2850,7 @@ tr53:
       rb_yield(row);
     }
   }
-#line 167 "ext/fastcsv/fastcsv.rl"
+#line 170 "ext/fastcsv/fastcsv.rl"
 	{act = 3;}
 	goto st14;
 tr59:
@@ -2892,7 +2900,7 @@ tr59:
     rb_ary_push(row, field);
     field = Qnil;
   }
-#line 165 "ext/fastcsv/fastcsv.rl"
+#line 168 "ext/fastcsv/fastcsv.rl"
 	{act = 1;}
 #line 100 "ext/fastcsv/fastcsv.rl"
 	{
@@ -2902,7 +2910,7 @@ tr59:
       if (p - mark_row_sep != len_row_sep || row_sep[0] != *mark_row_sep || (len_row_sep == 2 && row_sep[1] != *(mark_row_sep + 1))) {
         FREE;
 
-        rb_raise(eError, "Unquoted fields do not allow \\r or \\n (line %d).", curline - 1);
+        rb_raise(eError, "Unquoted fields do not allow \\r or \\n (line %d).", curline);
       }
     }
     else {
@@ -2910,6 +2918,8 @@ tr59:
       row_sep = ALLOC_N(char, len_row_sep);
       memcpy(row_sep, mark_row_sep, len_row_sep);
     }
+
+    curline++;
   }
 	goto st14;
 tr60:
@@ -2959,7 +2969,7 @@ tr60:
     rb_ary_push(row, field);
     field = Qnil;
   }
-#line 165 "ext/fastcsv/fastcsv.rl"
+#line 168 "ext/fastcsv/fastcsv.rl"
 	{act = 1;}
 #line 100 "ext/fastcsv/fastcsv.rl"
 	{
@@ -2969,7 +2979,7 @@ tr60:
       if (p - mark_row_sep != len_row_sep || row_sep[0] != *mark_row_sep || (len_row_sep == 2 && row_sep[1] != *(mark_row_sep + 1))) {
         FREE;
 
-        rb_raise(eError, "Unquoted fields do not allow \\r or \\n (line %d).", curline - 1);
+        rb_raise(eError, "Unquoted fields do not allow \\r or \\n (line %d).", curline);
       }
     }
     else {
@@ -2977,8 +2987,10 @@ tr60:
       row_sep = ALLOC_N(char, len_row_sep);
       memcpy(row_sep, mark_row_sep, len_row_sep);
     }
+
+    curline++;
   }
-#line 137 "ext/fastcsv/fastcsv.rl"
+#line 138 "ext/fastcsv/fastcsv.rl"
 	{
     if (d->start == 0 || p == d->start) { // same as new_row
       rb_ivar_set(self, s_row, rb_str_new2(""));
@@ -3000,14 +3012,14 @@ st14:
 	if ( ++p == pe )
 		goto _test_eof14;
 case 14:
-#line 3004 "ext/fastcsv/fastcsv.c"
+#line 3016 "ext/fastcsv/fastcsv.c"
 	_widec = (*p);
 	_widec = (short)(1152 + ((*p) - -128));
 	if ( 
-#line 155 "ext/fastcsv/fastcsv.rl"
+#line 156 "ext/fastcsv/fastcsv.rl"
  (*p) == quote_char  ) _widec += 256;
 	if ( 
-#line 156 "ext/fastcsv/fastcsv.rl"
+#line 157 "ext/fastcsv/fastcsv.rl"
  (*p) == col_sep  ) _widec += 512;
 	switch( _widec ) {
 		case 1280: goto tr13;
@@ -3074,7 +3086,7 @@ case 14:
 	_out: {}
 	}
 
-#line 444 "ext/fastcsv/fastcsv.rl"
+#line 447 "ext/fastcsv/fastcsv.rl"
 
     if (done && cs < raw_parse_first_final) {
       if (d->start == 0 || p == d->start) { // same as new_row
@@ -3100,6 +3112,13 @@ case 14:
     else if (io) {
       have = pe - ts;
       memmove(buf, ts, have);
+      // @see https://github.com/hpricot/hpricot/blob/master/ext/hpricot_scan/hpricot_scan.rl#L92
+      if (d->start > ts) {
+        d->start = buf + (d->start - ts);
+      }
+      if (mark_row_sep > ts) {
+        mark_row_sep = buf + (mark_row_sep - ts);
+      }
       te = buf + (te - ts);
       ts = buf;
     }
