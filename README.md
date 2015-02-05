@@ -40,9 +40,9 @@ end
 
 FastCSV can be used as a drop-in replacement for [CSV](http://ruby-doc.org/stdlib-2.1.1/libdoc/csv/rdoc/CSV.html) (replace `CSV` with `FastCSV`) except:
 
-* The `:row_sep` option is ignored. The default `:auto` is implemented. [#9](https://github.com/jpmckinney/fastcsv/issues/9)
-* The `:col_sep` option must be a single-byte string, like the default `,`. [#8](https://github.com/jpmckinney/fastcsv/issues/8) [Python](https://docs.python.org/3/library/csv.html#dialects-and-formatting-parameters) and [PHP](http://php.net/fgetcsv) support single-byte delimiters only, as do the major libraries in [JavaScript](http://papaparse.com/docs), [Java](http://commons.apache.org/proper/commons-csv/apidocs/index.html), [C](https://github.com/robertpostill/libcsv/blob/master/FAQ), [Objective-C](https://github.com/davedelong/CHCSVParser#parsing) and [Perl](http://search.cpan.org/~makamaka/Text-CSV-1.32/lib/Text/CSV.pm). A major [Node](https://github.com/wdavidw/node-csv-parse/issues/26) library supports multi-byte delimiters.
-* If FastCSV raises an error, you can't continue reading. [#3](https://github.com/jpmckinney/fastcsv/issues/3) Its error messages don't perfectly match those of CSV.
+* The `:row_sep` option is ignored. The default `:auto` is implemented [#9](https://github.com/jpmckinney/fastcsv/issues/9).
+* The `:col_sep` option must be a single-byte string, like the default `,` [#8].(https://github.com/jpmckinney/fastcsv/issues/8) [Python](https://docs.python.org/3/library/csv.html#dialects-and-formatting-parameters) and [PHP](http://php.net/fgetcsv) support single-byte delimiters only, as do the major libraries in [JavaScript](http://papaparse.com/docs), [Java](http://commons.apache.org/proper/commons-csv/apidocs/index.html), [C](https://github.com/robertpostill/libcsv/blob/master/FAQ), [Objective-C](https://github.com/davedelong/CHCSVParser#parsing) and [Perl](http://search.cpan.org/~makamaka/Text-CSV-1.32/lib/Text/CSV.pm). A major [Node](https://github.com/wdavidw/node-csv-parse/issues/26) library supports multi-byte delimiters.
+* If FastCSV raises an error, you can't continue reading [#3](https://github.com/jpmckinney/fastcsv/issues/3). Its error messages don't perfectly match those of CSV.
 
 A few minor caveats:
 
