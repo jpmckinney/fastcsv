@@ -20,8 +20,8 @@ class TestCSV::Interface < TestCSV
     @path = @tempfile.path
 
     File.open(@path, "wb") do |file|
-      file << "1,2,3\r\n"
-      file << "4,5\r\n"
+      file << "1\t2\t3\r\n"
+      file << "4\t5\r\n"
     end
 
     @expected = [%w{1 2 3}, %w{4 5}]
@@ -35,19 +35,19 @@ class TestCSV::Interface < TestCSV
   ### Test Read Interface ###
 
   def test_foreach
-    FastCSV.foreach(@path, col_sep: ",", row_sep: "\r\n") do |row|
+    FastCSV.foreach(@path, col_sep: "\t", row_sep: "\r\n") do |row|
       assert_equal(@expected.shift, row)
     end
   end
 
   def test_foreach_enum
-    FastCSV.foreach(@path, col_sep: ",", row_sep: "\r\n").zip(@expected) do |row, exp|
+    FastCSV.foreach(@path, col_sep: "\t", row_sep: "\r\n").zip(@expected) do |row, exp|
       assert_equal(exp, row)
     end
   end
 
   def test_open_and_close
-    csv = FastCSV.open(@path, "r+", col_sep: ",", row_sep: "\r\n")
+    csv = FastCSV.open(@path, "r+", col_sep: "\t", row_sep: "\r\n")
     assert_not_nil(csv)
     assert_instance_of(FastCSV, csv)
     assert_equal(false, csv.closed?)
@@ -66,21 +66,21 @@ class TestCSV::Interface < TestCSV
   def test_parse
     data = File.binread(@path)
     assert_equal( @expected,
-                  FastCSV.parse(data, col_sep: ",", row_sep: "\r\n") )
+                  FastCSV.parse(data, col_sep: "\t", row_sep: "\r\n") )
 
-    FastCSV.parse(data, col_sep: ",", row_sep: "\r\n") do |row|
+    FastCSV.parse(data, col_sep: "\t", row_sep: "\r\n") do |row|
       assert_equal(@expected.shift, row)
     end
   end
 
   def test_parse_line
-    row = FastCSV.parse_line("1,2,3", col_sep: ",")
+    row = FastCSV.parse_line("1;2;3", col_sep: ";")
     assert_not_nil(row)
     assert_instance_of(Array, row)
     assert_equal(%w{1 2 3}, row)
 
     # shortcut interface
-    row = "1,2,3".parse_csv(col_sep: ",")
+    row = "1;2;3".parse_csv(col_sep: ";")
     assert_not_nil(row)
     assert_instance_of(Array, row)
     assert_equal(%w{1 2 3}, row)
@@ -93,29 +93,29 @@ class TestCSV::Interface < TestCSV
 
   def test_read_and_readlines
     assert_equal( @expected,
-                  FastCSV.read(@path, col_sep: ",", row_sep: "\r\n") )
+                  FastCSV.read(@path, col_sep: "\t", row_sep: "\r\n") )
     assert_equal( @expected,
-                  FastCSV.readlines(@path, col_sep: ",", row_sep: "\r\n") )
+                  FastCSV.readlines(@path, col_sep: "\t", row_sep: "\r\n") )
 
 
-    data = FastCSV.open(@path, col_sep: ",", row_sep: "\r\n") do |csv|
+    data = FastCSV.open(@path, col_sep: "\t", row_sep: "\r\n") do |csv|
       csv.read
     end
     assert_equal(@expected, data)
-    data = FastCSV.open(@path, col_sep: ",", row_sep: "\r\n") do |csv|
+    data = FastCSV.open(@path, col_sep: "\t", row_sep: "\r\n") do |csv|
       csv.readlines
     end
     assert_equal(@expected, data)
   end
 
   def test_table
-    table = FastCSV.table(@path, col_sep: ",", row_sep: "\r\n")
+    table = FastCSV.table(@path, col_sep: "\t", row_sep: "\r\n")
     assert_instance_of(FastCSV::Table, table)
     assert_equal([[:"1", :"2", :"3"], [4, 5, nil]], table.to_a)
   end
 
   def test_shift  # aliased as gets() and readline()
-    FastCSV.open(@path, "rb+", col_sep: ",", row_sep: "\r\n") do |csv|
+    FastCSV.open(@path, "rb+", col_sep: "\t", row_sep: "\r\n") do |csv|
       assert_equal(@expected.shift, csv.shift)
       assert_equal(@expected.shift, csv.shift)
       assert_equal(nil, csv.shift)
@@ -123,7 +123,7 @@ class TestCSV::Interface < TestCSV
   end
 
   def test_enumerators_are_supported
-    FastCSV.open(@path, col_sep: ",", row_sep: "\r\n") do |csv|
+    FastCSV.open(@path, col_sep: "\t", row_sep: "\r\n") do |csv|
       enum = csv.each
       assert_instance_of(Enumerator, enum)
       assert_equal(@expected.shift, enum.next)
@@ -149,16 +149,16 @@ class TestCSV::Interface < TestCSV
   end
 
   def test_generate_line
-    line = FastCSV.generate_line(%w{1 2 3}, col_sep: ",")
+    line = FastCSV.generate_line(%w{1 2 3}, col_sep: ";")
     assert_not_nil(line)
     assert_instance_of(String, line)
-    assert_equal("1,2,3\n", line)
+    assert_equal("1;2;3\n", line)
 
     # shortcut interface
-    line = %w{1 2 3}.to_csv(col_sep: ",")
+    line = %w{1 2 3}.to_csv(col_sep: ";")
     assert_not_nil(line)
     assert_instance_of(String, line)
-    assert_equal("1,2,3\n", line)
+    assert_equal("1;2;3\n", line)
   end
 
   def test_write_header_detection
@@ -242,19 +242,19 @@ class TestCSV::Interface < TestCSV
     File.unlink(@path)
 
     lines = [{"a" => 1, "b" => 2, "c" => 3}, {"a" => 4, "b" => 5, "c" => 6}]
-    FastCSV.open(@path, "wb", headers: "b,a,c", col_sep: ",") do |csv|
+    FastCSV.open(@path, "wb", headers: "b|a|c", col_sep: "|") do |csv|
       lines.each { |line| csv << line }
     end
 
     # test writing fields in the correct order
     File.open(@path, "rb") do |f|
-      assert_equal("2,1,3", f.gets.strip)
-      assert_equal("5,4,6", f.gets.strip)
+      assert_equal("2|1|3", f.gets.strip)
+      assert_equal("5|4|6", f.gets.strip)
     end
 
     # test reading FastCSV with headers
-    FastCSV.open( @path, "rb", headers:    "b,a,c",
-                           col_sep:    ",",
+    FastCSV.open( @path, "rb", headers:    "b|a|c",
+                           col_sep:    "|",
                            converters: :all ) do |csv|
       csv.each { |line| assert_equal(lines.shift, line.to_hash) }
     end
@@ -264,22 +264,22 @@ class TestCSV::Interface < TestCSV
     File.unlink(@path)
 
     lines = [{"a" => 1, "b" => 2, "c" => 3}, {"a" => 4, "b" => 5, "c" => 6}]
-    FastCSV.open( @path, "wb", headers:       "b,a,c",
+    FastCSV.open( @path, "wb", headers:       "b|a|c",
                            write_headers: true,
-                           col_sep:       "," ) do |csv|
+                           col_sep:       "|" ) do |csv|
       lines.each { |line| csv << line }
     end
 
     # test writing fields in the correct order
     File.open(@path, "rb") do |f|
-      assert_equal("b,a,c", f.gets.strip)
-      assert_equal("2,1,3", f.gets.strip)
-      assert_equal("5,4,6", f.gets.strip)
+      assert_equal("b|a|c", f.gets.strip)
+      assert_equal("2|1|3", f.gets.strip)
+      assert_equal("5|4|6", f.gets.strip)
     end
 
     # test reading FastCSV with headers
     FastCSV.open( @path, "rb", headers:    true,
-                           col_sep:    ",",
+                           col_sep:    "|",
                            converters: :all ) do |csv|
       csv.each { |line| assert_equal(lines.shift, line.to_hash) }
     end
@@ -288,7 +288,7 @@ class TestCSV::Interface < TestCSV
   def test_append  # aliased add_row() and puts()
     File.unlink(@path)
 
-    FastCSV.open(@path, "wb", col_sep: ",", row_sep: "\r\n") do |csv|
+    FastCSV.open(@path, "wb", col_sep: "\t", row_sep: "\r\n") do |csv|
       @expected.each { |row| csv << row }
     end
 
@@ -297,7 +297,7 @@ class TestCSV::Interface < TestCSV
     # same thing using FastCSV::Row objects
     File.unlink(@path)
 
-    FastCSV.open(@path, "wb", col_sep: ",", row_sep: "\r\n") do |csv|
+    FastCSV.open(@path, "wb", col_sep: "\t", row_sep: "\r\n") do |csv|
       @expected.each { |row| csv << FastCSV::Row.new(Array.new, row) }
     end
 
@@ -310,8 +310,8 @@ class TestCSV::Interface < TestCSV
     assert_respond_to(FastCSV, :filter)
 
     expected = [[1, 2, 3], [4, 5]]
-    FastCSV.filter( "1,2,3\n4,5\n", (result = String.new),
-                in_col_sep: ",", out_col_sep: ",",
+    FastCSV.filter( "1;2;3\n4;5\n", (result = String.new),
+                in_col_sep: ";", out_col_sep: ",",
                 converters: :all ) do |row|
       assert_equal(row, expected.shift)
       row.map! { |n| n * 2 }
@@ -325,20 +325,20 @@ class TestCSV::Interface < TestCSV
 
     first = nil
     assert_nothing_raised(Exception) do
-      first =  FastCSV.instance(csv, col_sep: ",")
+      first =  FastCSV.instance(csv, col_sep: ";")
       first << %w{a b c}
     end
 
-    assert_equal("a,b,c\n", csv)
+    assert_equal("a;b;c\n", csv)
 
     second = nil
     assert_nothing_raised(Exception) do
-      second =  FastCSV.instance(csv, col_sep: ",")
+      second =  FastCSV.instance(csv, col_sep: ";")
       second << [1, 2, 3]
     end
 
     assert_equal(first.object_id, second.object_id)
-    assert_equal("a,b,c\n1,2,3\n", csv)
+    assert_equal("a;b;c\n1;2;3\n", csv)
 
     # shortcuts
     assert_equal(STDOUT, FastCSV.instance.instance_eval { @io })

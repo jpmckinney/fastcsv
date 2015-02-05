@@ -72,7 +72,7 @@ class TestCSV::Encodings < TestCSV
     each_encoding do |encoding|
       begin
         assert_parses( [ %w[ abc def ],
-                         %w[ ghi jkl ] ], encoding, col_sep: "," )
+                         %w[ ghi jkl ] ], encoding, col_sep: "|" )
       rescue Encoding::ConverterNotFoundError
         fail("Failed to properly escape #{encoding.name}.")
       end
@@ -112,8 +112,8 @@ class TestCSV::Encodings < TestCSV
   def test_csv_chars_are_transcoded
     encode_for_tests([%w[abc def]]) do |data|
       %w[col_sep row_sep quote_char].each do |csv_char|
-        assert_equal( ",".encode(data.encoding),
-                      FastCSV.new(data, csv_char.to_sym => ",").send(csv_char) )
+        assert_equal( "|".encode(data.encoding),
+                      FastCSV.new(data, csv_char.to_sym => "|").send(csv_char) )
       end
     end
   end
@@ -221,15 +221,15 @@ class TestCSV::Encodings < TestCSV
     each_encoding do |encoding|
       # test generate_line with encoding hint
       begin
-        csv = %w[abc d,ef].map { |f| f.encode(encoding) }.
-          to_csv(col_sep: ",", encoding: encoding.name)
+        csv = %w[abc d|ef].map { |f| f.encode(encoding) }.
+          to_csv(col_sep: "|", encoding: encoding.name)
       rescue Encoding::ConverterNotFoundError
         next
       end
       assert_equal(encoding, csv.encoding)
 
       # test generate_line with encoding guessing from fields
-      csv = %w[abc d,ef].map { |f| f.encode(encoding) }.to_csv(col_sep: ",")
+      csv = %w[abc d|ef].map { |f| f.encode(encoding) }.to_csv(col_sep: "|")
       assert_equal(encoding, csv.encoding)
 
       # writing to files
@@ -283,23 +283,23 @@ class TestCSV::Encodings < TestCSV
       end unless encoding == __ENCODING__
     rescue Encoding::ConverterNotFoundError
     end
-    # options[:encoding] = encoding.name
-    # FastCSV.open(@temp_csv_path, options) do |csv|
-    #   csv.each_with_index do |row, i|
-    #     assert_equal(fields[i], row)
-    #   end
-    # end
-    # options.delete(:encoding)
-    # options[:external_encoding] = encoding.name
-    # options[:internal_encoding] = __ENCODING__.name
-    # begin
-    #   FastCSV.open(@temp_csv_path, options) do |csv|
-    #     csv.each_with_index do |row, i|
-    #       assert_equal(orig_fields[i], row)
-    #     end
-    #   end unless encoding == __ENCODING__
-    # rescue Encoding::ConverterNotFoundError
-    # end
+    options[:encoding] = encoding.name
+    FastCSV.open(@temp_csv_path, options) do |csv|
+      csv.each_with_index do |row, i|
+        assert_equal(fields[i], row)
+      end
+    end
+    options.delete(:encoding)
+    options[:external_encoding] = encoding.name
+    options[:internal_encoding] = __ENCODING__.name
+    begin
+      FastCSV.open(@temp_csv_path, options) do |csv|
+        csv.each_with_index do |row, i|
+          assert_equal(orig_fields[i], row)
+        end
+      end unless encoding == __ENCODING__
+    rescue Encoding::ConverterNotFoundError
+    end
   end
 
   def encode_ary(ary, encoding)

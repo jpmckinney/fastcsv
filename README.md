@@ -8,7 +8,7 @@
 
 A fast [Ragel](http://www.colm.net/open-source/ragel/)-based CSV parser, compatible with Ruby's CSV.
 
-**Only reads CSVs using `"` as the quote character, `,` as the delimiter and `\r`, `\n` or `\r\n` as the line terminator.**
+**Only reads CSVs using a single-byte delimiter (like `,`) and `\r`, `\n` or `\r\n` as the line terminator.**
 
 ## Usage
 
@@ -42,7 +42,8 @@ end
 
 FastCSV can be used as a drop-in replacement for [CSV](http://ruby-doc.org/stdlib-2.1.1/libdoc/csv/rdoc/CSV.html) (replace `CSV` with `FastCSV`) except:
 
-* The `:quote_char` (`"`), `:col_sep` (`,`) and `:row_sep` (`:auto`) options are ignored. [#2](https://github.com/jpmckinney/fastcsv/issues/2)
+* The `:row_sep` option is ignored. The default `:auto` is implemented. [#9](https://github.com/jpmckinney/fastcsv/issues/9)
+* The `:col_sep` option must be a single-byte string. [#8](https://github.com/jpmckinney/fastcsv/issues/8)
 * If FastCSV raises an error, you can't continue reading. [#3](https://github.com/jpmckinney/fastcsv/issues/3) Its error messages don't perfectly match those of CSV.
 
 A few minor caveats:

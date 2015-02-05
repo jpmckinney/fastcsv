@@ -47,16 +47,16 @@ class TestCSV::Features < TestCSV
     @csv = FastCSV.new(@sample_data)
   end
 
-  # def test_col_sep
-  #   [";", "\t"].each do |sep|
-  #     TEST_CASES.each do |test_case|
-  #       assert_equal( test_case.last.map { |t| t.tr(",", sep) unless t.nil? },
-  #                     FastCSV.parse_line( test_case.first.tr(",", sep),
-  #                                     col_sep: sep ) )
-  #     end
-  #   end
-  #   assert_equal([",,,", nil], FastCSV.parse_line(",,,;", col_sep: ";"))
-  # end
+  def test_col_sep
+    [";", "\t"].each do |sep|
+      TEST_CASES.each do |test_case|
+        assert_equal( test_case.last.map { |t| t.tr(",", sep) unless t.nil? },
+                      FastCSV.parse_line( test_case.first.tr(",", sep),
+                                      col_sep: sep ) )
+      end
+    end
+    assert_equal([",,,", nil], FastCSV.parse_line(",,,;", col_sep: ";"))
+  end
 
   # def test_row_sep
   #   assert_raise(FastCSV::MalformedCSVError) do
@@ -66,13 +66,13 @@ class TestCSV::Features < TestCSV
   #                 FastCSV.parse_line(%Q{1,2,"3\n",4,5\r\n}, row_sep: "\r\n"))
   # end
 
-  # def test_quote_char
-  #   TEST_CASES.each do |test_case|
-  #     assert_equal( test_case.last.map { |t| t.tr('"', "'") unless t.nil? },
-  #                   FastCSV.parse_line( test_case.first.tr('"', "'"),
-  #                                   quote_char: "'" ) )
-  #   end
-  # end
+  def test_quote_char
+    TEST_CASES.each do |test_case|
+      assert_equal( test_case.last.map { |t| t.tr('"', "'") unless t.nil? },
+                    FastCSV.parse_line( test_case.first.tr('"', "'"),
+                                    quote_char: "'" ) )
+    end
+  end
 
   def test_csv_char_readers
     %w[col_sep row_sep quote_char].each do |reader|

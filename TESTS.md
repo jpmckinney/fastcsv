@@ -23,15 +23,14 @@ Here are some notes on maintaining the `test/` directory.
         sed -i.bak '1s;^;require "fastcsv"\
         ;' test/runner.rb
 
-1. In `test_interface.rb`, replace `\\t|;|(?<=\S)\|(?=\S)` with `,`. In `test_encodings.rb`, replace `(?<=[^\s{])\|(?=\S)` with `,` and replace `Encoding.list` with `Encoding.list.reject{|e| e.name[/\AUTF-\d\d/]}`. These changes are because `:col_sep`, `:row_sep` and `:quote_char` are ignored and because UTF-16 and UTF-32 aren't supported.
+1. In `test_encodings.rb`, replace `Encoding.list` with `Encoding.list.reject{|e| e.name[/\AUTF-\d\d/]}`, because UTF-16 and UTF-32 aren't supported.
 
-1. Comment these tests because `:col_sep`, `:row_sep` and `:quote_char` are ignored:
+1. Comment these tests because `:row_sep` is ignored and multibyte `:quote_char` is unsupported:
 
   * `test_csv_parsing.rb`: the first part of `test_malformed_csv`
-  * `test_features.rb`: `test_col_sep`, `test_row_sep`, `test_quote_char`, `test_leading_empty_fields_with_multibyte_col_sep_bug_fix`
-  * `test_headers.rb`: `test_csv_header_string_inherits_separators`
+  * `test_features.rb`: `test_row_sep`, `test_leading_empty_fields_with_multibyte_col_sep_bug_fix`
 
-1. Comment these tests in `test_csv_encoding.rb` because UTF-16 and UTF-32 aren't supported:
+1. Comment these tests in `test_encodings.rb` because UTF-16 and UTF-32 aren't supported:
 
   * `test_parses_utf16be_encoding`
   * the second part of `test_open_allows_you_to_set_encodings`

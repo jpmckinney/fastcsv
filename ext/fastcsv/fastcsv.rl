@@ -152,8 +152,8 @@ typedef struct {
   }
 
   EOF = 0;
-  quote_char = '"';
-  col_sep = ',' >new_field;
+  quote_char = any when { fc == quote_char };
+  col_sep = any when { fc == col_sep } >new_field;
   row_sep = ('\r' '\n'? | '\n');
   unquoted = (any* -- quote_char -- col_sep -- row_sep - EOF) %read_unquoted;
   quoted = quote_char >open_quote (any - quote_char - EOF | quote_char quote_char | row_sep)* %read_quoted quote_char >close_quote;
@@ -212,7 +212,7 @@ static VALUE raw_parse(int argc, VALUE *argv, VALUE self) {
   Data_Get_Struct(self, Data, d);
 
   VALUE option;
-  char quote_char = '"';
+  char quote_char = '"', col_sep = ',';
 
   rb_scan_args(argc, argv, "11", &port, &opts);
   taint = OBJ_TAINTED(port);
@@ -232,6 +232,22 @@ static VALUE raw_parse(int argc, VALUE *argv, VALUE self) {
   }
   else if (TYPE(opts) != T_HASH) {
     rb_raise(rb_eArgError, "options has to be a Hash or nil");
+  }
+
+  option = rb_hash_aref(opts, ID2SYM(rb_intern("quote_char")));
+  if (TYPE(option) == T_STRING && RSTRING_LEN(option) == 1) {
+    quote_char = *StringValueCStr(option);
+  }
+  else if (!NIL_P(option)) {
+    rb_raise(rb_eArgError, ":quote_char has to be a single character String");
+  }
+
+  option = rb_hash_aref(opts, ID2SYM(rb_intern("col_sep")));
+  if (TYPE(option) == T_STRING && RSTRING_LEN(option) == 1) {
+    col_sep = *StringValueCStr(option);
+  }
+  else if (!NIL_P(option)) {
+    rb_raise(rb_eArgError, ":col_sep has to be a single character String");
   }
 
   // @see rb_io_extract_modeenc
