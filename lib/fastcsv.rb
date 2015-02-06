@@ -123,7 +123,7 @@ private
           encoding = enc
         end
       end
-      parser.raw_parse(@io, encoding: encoding, quote_char: quote_char, col_sep: col_sep) do |row|
+      parser.raw_parse(@io, encoding: encoding, quote_char: quote_char, col_sep: col_sep, row_sep: row_sep) do |row|
         Fiber.yield(row)
       end
     end
