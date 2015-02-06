@@ -136,7 +136,14 @@ RSpec.shared_examples 'a CSV parser' do
     end
   end
 
-  it "should parse an encoded string" do
+  it 'should raise the row number' do
+    csv = %("\n\n\n"\n"x)
+    csv_error = 'Unclosed quoted field on line 2.'
+    expect{CSV.parse(csv)}.to raise_error(CSV::MalformedCSVError, csv_error)
+    expect{parse(csv)}.to raise_error(FastCSV::MalformedCSVError, csv_error)
+  end
+
+  it 'should parse an encoded string' do
     csv = "ß"
     actual = parse(csv)
     expected = CSV.parse(csv)
