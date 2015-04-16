@@ -16,8 +16,8 @@ Gem::Specification.new do |s|
   s.extensions    = ["ext/fastcsv/extconf.rb"]
 
   s.add_development_dependency('coveralls')
-  s.add_development_dependency('json', '~> 1.8') # to silence coveralls warning
   s.add_development_dependency('rake')
-  s.add_development_dependency('rake-compiler')
   s.add_development_dependency('rspec', '~> 3.1')
+
+  s.add_development_dependency('rake-compiler')
 end
