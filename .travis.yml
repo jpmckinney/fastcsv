@@ -7,8 +7,8 @@ rvm:
   - 2.1.0
   - 2.2.0
 before_script:
-  - rake compile
+  - bundle exec rake compile
 script:
-  - rake
+  - bundle exec rake
   # The CSV tests in test/ are specific to Ruby 2.1.0.
-  - if [ $TRAVIS_RUBY_VERSION = '2.1.0' ]; then rspec test/runner.rb test/csv; fi
+  - if [ $TRAVIS_RUBY_VERSION = '2.1.0' ]; then bundle exec rspec test/runner.rb test/csv; fi
