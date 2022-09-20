@@ -473,7 +473,7 @@ static VALUE raw_parse(int argc, VALUE *argv, VALUE self) {
       if (d->start > ts) {
         d->start = buf + (d->start - ts);
       }
-      if (mark_row_sep > ts) {
+      if (mark_row_sep >= ts) {
         mark_row_sep = buf + (mark_row_sep - ts);
       }
       te = buf + (te - ts);
