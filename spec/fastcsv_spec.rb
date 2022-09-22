@@ -188,6 +188,14 @@ RSpec.shared_examples 'a CSV parser' do
     it 'should allow zero' do
       expect(parse_with_buffer_size(simple, 0)).to eq(CSV.parse(simple))
     end
+
+    it 'should parse a consecutive field-sep and row-sep at a buffer boundary' do
+      # This is a further minimized reproduction of
+      # https://github.com/jpmckinney/fastcsv/issues/14
+      csv = "A0,B0\nA1,B1,\nA2,B2,\n"
+      buffer_size = 4
+      expect(parse_with_buffer_size(csv, buffer_size)).to eq(CSV.parse(csv))
+    end
   end
 end
 
