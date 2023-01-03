@@ -2,7 +2,7 @@
 
 Gem::Specification.new do |s|
   s.name        = "fastcsv"
-  s.version     = '0.0.6'
+  s.version     = '0.0.7'
   s.platform    = Gem::Platform::RUBY
   s.authors     = ["James McKinney"]
   s.homepage    = "https://github.com/jpmckinney/fastcsv"
