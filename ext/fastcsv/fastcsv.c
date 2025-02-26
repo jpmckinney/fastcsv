@@ -2,6 +2,8 @@
 #line 1 "ext/fastcsv/fastcsv.rl"
 #include <ruby.h>
 #include <ruby/encoding.h>
+#include <stdbool.h>
+
 // CSV specifications.
 // http://tools.ietf.org/html/rfc4180
 // http://w3c.github.io/csvw/syntax/#ebnf
@@ -38,11 +40,11 @@ typedef struct {
 } Data;
 
 
-#line 172 "ext/fastcsv/fastcsv.rl"
+#line 156 "ext/fastcsv/fastcsv.rl"
 
 
 
-#line 46 "ext/fastcsv/fastcsv.c"
+#line 48 "ext/fastcsv/fastcsv.c"
 static const int raw_parse_start = 4;
 static const int raw_parse_first_final = 4;
 static const int raw_parse_error = 0;
@@ -50,7 +52,7 @@ static const int raw_parse_error = 0;
 static const int raw_parse_en_main = 4;
 
 
-#line 175 "ext/fastcsv/fastcsv.rl"
+#line 159 "ext/fastcsv/fastcsv.rl"
 
 // 16 kB
 #define BUFSIZE 16384
@@ -81,6 +83,38 @@ static void rb_io_ext_int_to_encs(rb_encoding *ext, rb_encoding *intern, rb_enco
   }
 }
 
+static void parse_quoted_field(VALUE* field, rb_encoding* encoding, char quote_char, char* quoted_field_start, char *quoted_field_end) {
+  // read the full quoted field, handling any escape sequences
+  if (quoted_field_end == quoted_field_start) {
+    // empty quoted field is an empty string
+    *field = rb_enc_str_new("", 0, encoding);
+  } else {
+    // largest possible buffer. if there's escaping, the resulting string will
+    // not use the entire buffer
+    char *copy = ALLOC_N(char, quoted_field_end - quoted_field_start);
+    char *reader = quoted_field_start, *writer = copy;
+    int escaped = 0;
+
+    while (quoted_field_end > reader) {
+      if (*reader == quote_char && !escaped) {
+        // Skip the escaping character.
+        escaped = 1;
+      }
+      else {
+        escaped = 0;
+        *writer++ = *reader;
+      }
+      reader++;
+    }
+
+    *field = rb_enc_str_new(copy, writer - copy, encoding);
+
+    if (copy != NULL) {
+      free(copy);
+    }
+  }
+}
+
 static VALUE raw_parse(int argc, VALUE *argv, VALUE self) {
   int cs, act, have = 0, curline = 1, io = 0;
   char *ts = 0, *te = 0, *buf = 0, *eof = 0, *mark_row_sep = 0, *row_sep = 0;
@@ -95,6 +129,8 @@ static VALUE raw_parse(int argc, VALUE *argv, VALUE self) {
 
   VALUE option;
   char quote_char = '"', col_sep = ',';
+
+  bool in_quoted_field = false;
 
   rb_scan_args(argc, argv, "11", &port, &opts);
   taint = OBJ_TAINTED(port);
@@ -262,7 +298,7 @@ static VALUE raw_parse(int argc, VALUE *argv, VALUE self) {
   }
 
   
-#line 266 "ext/fastcsv/fastcsv.c"
+#line 302 "ext/fastcsv/fastcsv.c"
 	{
 	cs = raw_parse_start;
 	ts = 0;
@@ -270,7 +306,7 @@ static VALUE raw_parse(int argc, VALUE *argv, VALUE self) {
 	act = 0;
 	}
 
-#line 386 "ext/fastcsv/fastcsv.rl"
+#line 404 "ext/fastcsv/fastcsv.rl"
 
   while (!done) {
     VALUE str;
@@ -332,7 +368,7 @@ static VALUE raw_parse(int argc, VALUE *argv, VALUE self) {
 
     pe = p + len;
     
-#line 336 "ext/fastcsv/fastcsv.c"
+#line 372 "ext/fastcsv/fastcsv.c"
 	{
 	short _widec;
 	if ( p == pe )
@@ -352,7 +388,7 @@ tr0:
 	}
 	goto st4;
 tr5:
-#line 49 "ext/fastcsv/fastcsv.rl"
+#line 52 "ext/fastcsv/fastcsv.rl"
 	{
     if (p == ts) {
       // Unquoted empty fields are nil, not "", in Ruby.
@@ -363,7 +399,7 @@ tr5:
       ENCODE;
     }
   }
-#line 138 "ext/fastcsv/fastcsv.rl"
+#line 122 "ext/fastcsv/fastcsv.rl"
 	{
     if (d->start == 0 || p == d->start) { // same as new_row
       rb_ivar_set(self, s_row, rb_str_new2(""));
@@ -380,11 +416,11 @@ tr5:
       rb_yield(row);
     }
   }
-#line 170 "ext/fastcsv/fastcsv.rl"
+#line 154 "ext/fastcsv/fastcsv.rl"
 	{te = p+1;}
 	goto st4;
 tr6:
-#line 49 "ext/fastcsv/fastcsv.rl"
+#line 52 "ext/fastcsv/fastcsv.rl"
 	{
     if (p == ts) {
       // Unquoted empty fields are nil, not "", in Ruby.
@@ -395,16 +431,22 @@ tr6:
       ENCODE;
     }
   }
-#line 95 "ext/fastcsv/fastcsv.rl"
+#line 67 "ext/fastcsv/fastcsv.rl"
 	{
+    if (in_quoted_field) {
+      parse_quoted_field(&field, encoding, quote_char, ts + 1, p - 1);
+      ENCODE;
+      in_quoted_field = false;
+    }
+
     rb_ary_push(row, field);
     field = Qnil;
   }
-#line 168 "ext/fastcsv/fastcsv.rl"
+#line 152 "ext/fastcsv/fastcsv.rl"
 	{te = p+1;}
 	goto st4;
 tr7:
-#line 49 "ext/fastcsv/fastcsv.rl"
+#line 52 "ext/fastcsv/fastcsv.rl"
 	{
     if (p == ts) {
       // Unquoted empty fields are nil, not "", in Ruby.
@@ -415,14 +457,20 @@ tr7:
       ENCODE;
     }
   }
-#line 95 "ext/fastcsv/fastcsv.rl"
+#line 67 "ext/fastcsv/fastcsv.rl"
 	{
+    if (in_quoted_field) {
+      parse_quoted_field(&field, encoding, quote_char, ts + 1, p - 1);
+      ENCODE;
+      in_quoted_field = false;
+    }
+
     rb_ary_push(row, field);
     field = Qnil;
   }
-#line 168 "ext/fastcsv/fastcsv.rl"
+#line 152 "ext/fastcsv/fastcsv.rl"
 	{te = p+1;}
-#line 138 "ext/fastcsv/fastcsv.rl"
+#line 122 "ext/fastcsv/fastcsv.rl"
 	{
     if (d->start == 0 || p == d->start) { // same as new_row
       rb_ivar_set(self, s_row, rb_str_new2(""));
@@ -441,7 +489,7 @@ tr7:
   }
 	goto st4;
 tr12:
-#line 138 "ext/fastcsv/fastcsv.rl"
+#line 122 "ext/fastcsv/fastcsv.rl"
 	{
     if (d->start == 0 || p == d->start) { // same as new_row
       rb_ivar_set(self, s_row, rb_str_new2(""));
@@ -458,27 +506,39 @@ tr12:
       rb_yield(row);
     }
   }
-#line 170 "ext/fastcsv/fastcsv.rl"
+#line 154 "ext/fastcsv/fastcsv.rl"
 	{te = p+1;}
 	goto st4;
 tr18:
-#line 95 "ext/fastcsv/fastcsv.rl"
+#line 67 "ext/fastcsv/fastcsv.rl"
 	{
+    if (in_quoted_field) {
+      parse_quoted_field(&field, encoding, quote_char, ts + 1, p - 1);
+      ENCODE;
+      in_quoted_field = false;
+    }
+
     rb_ary_push(row, field);
     field = Qnil;
   }
-#line 168 "ext/fastcsv/fastcsv.rl"
+#line 152 "ext/fastcsv/fastcsv.rl"
 	{te = p+1;}
 	goto st4;
 tr19:
-#line 95 "ext/fastcsv/fastcsv.rl"
+#line 67 "ext/fastcsv/fastcsv.rl"
 	{
+    if (in_quoted_field) {
+      parse_quoted_field(&field, encoding, quote_char, ts + 1, p - 1);
+      ENCODE;
+      in_quoted_field = false;
+    }
+
     rb_ary_push(row, field);
     field = Qnil;
   }
-#line 168 "ext/fastcsv/fastcsv.rl"
+#line 152 "ext/fastcsv/fastcsv.rl"
 	{te = p+1;}
-#line 138 "ext/fastcsv/fastcsv.rl"
+#line 122 "ext/fastcsv/fastcsv.rl"
 	{
     if (d->start == 0 || p == d->start) { // same as new_row
       rb_ivar_set(self, s_row, rb_str_new2(""));
@@ -497,11 +557,11 @@ tr19:
   }
 	goto st4;
 tr36:
-#line 170 "ext/fastcsv/fastcsv.rl"
+#line 154 "ext/fastcsv/fastcsv.rl"
 	{te = p;p--;}
 	goto st4;
 tr37:
-#line 100 "ext/fastcsv/fastcsv.rl"
+#line 78 "ext/fastcsv/fastcsv.rl"
 	{
     d->start = p;
 
@@ -532,7 +592,7 @@ tr37:
 	}
 	goto st4;
 tr43:
-#line 100 "ext/fastcsv/fastcsv.rl"
+#line 78 "ext/fastcsv/fastcsv.rl"
 	{
     d->start = p;
 
@@ -551,15 +611,15 @@ tr43:
 
     curline++;
   }
-#line 169 "ext/fastcsv/fastcsv.rl"
+#line 153 "ext/fastcsv/fastcsv.rl"
 	{te = p;p--;}
 	goto st4;
 tr44:
-#line 169 "ext/fastcsv/fastcsv.rl"
+#line 153 "ext/fastcsv/fastcsv.rl"
 	{te = p;p--;}
 	goto st4;
 tr45:
-#line 100 "ext/fastcsv/fastcsv.rl"
+#line 78 "ext/fastcsv/fastcsv.rl"
 	{
     d->start = p;
 
@@ -578,7 +638,7 @@ tr45:
 
     curline++;
   }
-#line 138 "ext/fastcsv/fastcsv.rl"
+#line 122 "ext/fastcsv/fastcsv.rl"
 	{
     if (d->start == 0 || p == d->start) { // same as new_row
       rb_ivar_set(self, s_row, rb_str_new2(""));
@@ -595,18 +655,24 @@ tr45:
       rb_yield(row);
     }
   }
-#line 170 "ext/fastcsv/fastcsv.rl"
+#line 154 "ext/fastcsv/fastcsv.rl"
 	{te = p+1;}
 	goto st4;
 tr51:
-#line 95 "ext/fastcsv/fastcsv.rl"
+#line 67 "ext/fastcsv/fastcsv.rl"
 	{
+    if (in_quoted_field) {
+      parse_quoted_field(&field, encoding, quote_char, ts + 1, p - 1);
+      ENCODE;
+      in_quoted_field = false;
+    }
+
     rb_ary_push(row, field);
     field = Qnil;
   }
-#line 168 "ext/fastcsv/fastcsv.rl"
+#line 152 "ext/fastcsv/fastcsv.rl"
 	{te = p+1;}
-#line 100 "ext/fastcsv/fastcsv.rl"
+#line 78 "ext/fastcsv/fastcsv.rl"
 	{
     d->start = p;
 
@@ -627,14 +693,20 @@ tr51:
   }
 	goto st4;
 tr52:
-#line 95 "ext/fastcsv/fastcsv.rl"
+#line 67 "ext/fastcsv/fastcsv.rl"
 	{
+    if (in_quoted_field) {
+      parse_quoted_field(&field, encoding, quote_char, ts + 1, p - 1);
+      ENCODE;
+      in_quoted_field = false;
+    }
+
     rb_ary_push(row, field);
     field = Qnil;
   }
-#line 168 "ext/fastcsv/fastcsv.rl"
+#line 152 "ext/fastcsv/fastcsv.rl"
 	{te = p+1;}
-#line 100 "ext/fastcsv/fastcsv.rl"
+#line 78 "ext/fastcsv/fastcsv.rl"
 	{
     d->start = p;
 
@@ -653,7 +725,7 @@ tr52:
 
     curline++;
   }
-#line 138 "ext/fastcsv/fastcsv.rl"
+#line 122 "ext/fastcsv/fastcsv.rl"
 	{
     if (d->start == 0 || p == d->start) { // same as new_row
       rb_ivar_set(self, s_row, rb_str_new2(""));
@@ -681,14 +753,14 @@ st4:
 case 4:
 #line 1 "NONE"
 	{ts = p;}
-#line 685 "ext/fastcsv/fastcsv.c"
+#line 757 "ext/fastcsv/fastcsv.c"
 	_widec = (*p);
 	_widec = (short)(1152 + ((*p) - -128));
 	if ( 
-#line 156 "ext/fastcsv/fastcsv.rl"
+#line 140 "ext/fastcsv/fastcsv.rl"
  (*p) == quote_char  ) _widec += 256;
 	if ( 
-#line 157 "ext/fastcsv/fastcsv.rl"
+#line 141 "ext/fastcsv/fastcsv.rl"
  (*p) == col_sep  ) _widec += 512;
 	switch( _widec ) {
 		case 1280: goto tr27;
@@ -726,10 +798,10 @@ case 1:
 	_widec = (*p);
 	_widec = (short)(1152 + ((*p) - -128));
 	if ( 
-#line 156 "ext/fastcsv/fastcsv.rl"
+#line 140 "ext/fastcsv/fastcsv.rl"
  (*p) == quote_char  ) _widec += 256;
 	if ( 
-#line 157 "ext/fastcsv/fastcsv.rl"
+#line 141 "ext/fastcsv/fastcsv.rl"
  (*p) == col_sep  ) _widec += 512;
 	switch( _widec ) {
 		case 1280: goto tr2;
@@ -754,7 +826,7 @@ case 1:
 tr2:
 #line 1 "NONE"
 	{te = p+1;}
-#line 49 "ext/fastcsv/fastcsv.rl"
+#line 52 "ext/fastcsv/fastcsv.rl"
 	{
     if (p == ts) {
       // Unquoted empty fields are nil, not "", in Ruby.
@@ -765,7 +837,7 @@ tr2:
       ENCODE;
     }
   }
-#line 138 "ext/fastcsv/fastcsv.rl"
+#line 122 "ext/fastcsv/fastcsv.rl"
 	{
     if (d->start == 0 || p == d->start) { // same as new_row
       rb_ivar_set(self, s_row, rb_str_new2(""));
@@ -782,21 +854,21 @@ tr2:
       rb_yield(row);
     }
   }
-#line 170 "ext/fastcsv/fastcsv.rl"
+#line 154 "ext/fastcsv/fastcsv.rl"
 	{act = 3;}
 	goto st5;
 st5:
 	if ( ++p == pe )
 		goto _test_eof5;
 case 5:
-#line 793 "ext/fastcsv/fastcsv.c"
+#line 865 "ext/fastcsv/fastcsv.c"
 	_widec = (*p);
 	_widec = (short)(1152 + ((*p) - -128));
 	if ( 
-#line 156 "ext/fastcsv/fastcsv.rl"
+#line 140 "ext/fastcsv/fastcsv.rl"
  (*p) == quote_char  ) _widec += 256;
 	if ( 
-#line 157 "ext/fastcsv/fastcsv.rl"
+#line 141 "ext/fastcsv/fastcsv.rl"
  (*p) == col_sep  ) _widec += 512;
 	switch( _widec ) {
 		case 1280: goto tr2;
@@ -821,7 +893,7 @@ case 5:
 tr3:
 #line 1 "NONE"
 	{te = p+1;}
-#line 49 "ext/fastcsv/fastcsv.rl"
+#line 52 "ext/fastcsv/fastcsv.rl"
 	{
     if (p == ts) {
       // Unquoted empty fields are nil, not "", in Ruby.
@@ -832,7 +904,7 @@ tr3:
       ENCODE;
     }
   }
-#line 119 "ext/fastcsv/fastcsv.rl"
+#line 97 "ext/fastcsv/fastcsv.rl"
 	{
     mark_row_sep = p;
 
@@ -841,6 +913,12 @@ tr3:
     }
     else if (p > d->start) {
       rb_ivar_set(self, s_row, rb_str_new(d->start, p - d->start));
+    }
+
+    if (in_quoted_field) {
+      parse_quoted_field(&field, encoding, quote_char, ts + 1, p - 1);
+      ENCODE;
+      in_quoted_field = false;
     }
 
     if (!NIL_P(field) || RARRAY_LEN(row)) { // same as new_field
@@ -851,13 +929,13 @@ tr3:
     rb_yield(row);
     row = rb_ary_new();
   }
-#line 169 "ext/fastcsv/fastcsv.rl"
+#line 153 "ext/fastcsv/fastcsv.rl"
 	{act = 2;}
 	goto st6;
 tr8:
 #line 1 "NONE"
 	{te = p+1;}
-#line 49 "ext/fastcsv/fastcsv.rl"
+#line 52 "ext/fastcsv/fastcsv.rl"
 	{
     if (p == ts) {
       // Unquoted empty fields are nil, not "", in Ruby.
@@ -868,14 +946,20 @@ tr8:
       ENCODE;
     }
   }
-#line 95 "ext/fastcsv/fastcsv.rl"
+#line 67 "ext/fastcsv/fastcsv.rl"
 	{
+    if (in_quoted_field) {
+      parse_quoted_field(&field, encoding, quote_char, ts + 1, p - 1);
+      ENCODE;
+      in_quoted_field = false;
+    }
+
     rb_ary_push(row, field);
     field = Qnil;
   }
-#line 168 "ext/fastcsv/fastcsv.rl"
+#line 152 "ext/fastcsv/fastcsv.rl"
 	{act = 1;}
-#line 119 "ext/fastcsv/fastcsv.rl"
+#line 97 "ext/fastcsv/fastcsv.rl"
 	{
     mark_row_sep = p;
 
@@ -884,6 +968,12 @@ tr8:
     }
     else if (p > d->start) {
       rb_ivar_set(self, s_row, rb_str_new(d->start, p - d->start));
+    }
+
+    if (in_quoted_field) {
+      parse_quoted_field(&field, encoding, quote_char, ts + 1, p - 1);
+      ENCODE;
+      in_quoted_field = false;
     }
 
     if (!NIL_P(field) || RARRAY_LEN(row)) { // same as new_field
@@ -898,7 +988,7 @@ tr8:
 tr13:
 #line 1 "NONE"
 	{te = p+1;}
-#line 119 "ext/fastcsv/fastcsv.rl"
+#line 97 "ext/fastcsv/fastcsv.rl"
 	{
     mark_row_sep = p;
 
@@ -907,6 +997,12 @@ tr13:
     }
     else if (p > d->start) {
       rb_ivar_set(self, s_row, rb_str_new(d->start, p - d->start));
+    }
+
+    if (in_quoted_field) {
+      parse_quoted_field(&field, encoding, quote_char, ts + 1, p - 1);
+      ENCODE;
+      in_quoted_field = false;
     }
 
     if (!NIL_P(field) || RARRAY_LEN(row)) { // same as new_field
@@ -917,20 +1013,26 @@ tr13:
     rb_yield(row);
     row = rb_ary_new();
   }
-#line 169 "ext/fastcsv/fastcsv.rl"
+#line 153 "ext/fastcsv/fastcsv.rl"
 	{act = 2;}
 	goto st6;
 tr20:
 #line 1 "NONE"
 	{te = p+1;}
-#line 95 "ext/fastcsv/fastcsv.rl"
+#line 67 "ext/fastcsv/fastcsv.rl"
 	{
+    if (in_quoted_field) {
+      parse_quoted_field(&field, encoding, quote_char, ts + 1, p - 1);
+      ENCODE;
+      in_quoted_field = false;
+    }
+
     rb_ary_push(row, field);
     field = Qnil;
   }
-#line 168 "ext/fastcsv/fastcsv.rl"
+#line 152 "ext/fastcsv/fastcsv.rl"
 	{act = 1;}
-#line 119 "ext/fastcsv/fastcsv.rl"
+#line 97 "ext/fastcsv/fastcsv.rl"
 	{
     mark_row_sep = p;
 
@@ -939,6 +1041,12 @@ tr20:
     }
     else if (p > d->start) {
       rb_ivar_set(self, s_row, rb_str_new(d->start, p - d->start));
+    }
+
+    if (in_quoted_field) {
+      parse_quoted_field(&field, encoding, quote_char, ts + 1, p - 1);
+      ENCODE;
+      in_quoted_field = false;
     }
 
     if (!NIL_P(field) || RARRAY_LEN(row)) { // same as new_field
@@ -953,13 +1061,13 @@ tr20:
 tr38:
 #line 1 "NONE"
 	{te = p+1;}
-#line 169 "ext/fastcsv/fastcsv.rl"
+#line 153 "ext/fastcsv/fastcsv.rl"
 	{act = 2;}
 	goto st6;
 tr46:
 #line 1 "NONE"
 	{te = p+1;}
-#line 119 "ext/fastcsv/fastcsv.rl"
+#line 97 "ext/fastcsv/fastcsv.rl"
 	{
     mark_row_sep = p;
 
@@ -970,6 +1078,12 @@ tr46:
       rb_ivar_set(self, s_row, rb_str_new(d->start, p - d->start));
     }
 
+    if (in_quoted_field) {
+      parse_quoted_field(&field, encoding, quote_char, ts + 1, p - 1);
+      ENCODE;
+      in_quoted_field = false;
+    }
+
     if (!NIL_P(field) || RARRAY_LEN(row)) { // same as new_field
       rb_ary_push(row, field);
       field = Qnil;
@@ -978,7 +1092,7 @@ tr46:
     rb_yield(row);
     row = rb_ary_new();
   }
-#line 100 "ext/fastcsv/fastcsv.rl"
+#line 78 "ext/fastcsv/fastcsv.rl"
 	{
     d->start = p;
 
@@ -997,20 +1111,26 @@ tr46:
 
     curline++;
   }
-#line 169 "ext/fastcsv/fastcsv.rl"
+#line 153 "ext/fastcsv/fastcsv.rl"
 	{act = 2;}
 	goto st6;
 tr53:
 #line 1 "NONE"
 	{te = p+1;}
-#line 95 "ext/fastcsv/fastcsv.rl"
+#line 67 "ext/fastcsv/fastcsv.rl"
 	{
+    if (in_quoted_field) {
+      parse_quoted_field(&field, encoding, quote_char, ts + 1, p - 1);
+      ENCODE;
+      in_quoted_field = false;
+    }
+
     rb_ary_push(row, field);
     field = Qnil;
   }
-#line 168 "ext/fastcsv/fastcsv.rl"
+#line 152 "ext/fastcsv/fastcsv.rl"
 	{act = 1;}
-#line 119 "ext/fastcsv/fastcsv.rl"
+#line 97 "ext/fastcsv/fastcsv.rl"
 	{
     mark_row_sep = p;
 
@@ -1021,6 +1141,12 @@ tr53:
       rb_ivar_set(self, s_row, rb_str_new(d->start, p - d->start));
     }
 
+    if (in_quoted_field) {
+      parse_quoted_field(&field, encoding, quote_char, ts + 1, p - 1);
+      ENCODE;
+      in_quoted_field = false;
+    }
+
     if (!NIL_P(field) || RARRAY_LEN(row)) { // same as new_field
       rb_ary_push(row, field);
       field = Qnil;
@@ -1029,7 +1155,7 @@ tr53:
     rb_yield(row);
     row = rb_ary_new();
   }
-#line 100 "ext/fastcsv/fastcsv.rl"
+#line 78 "ext/fastcsv/fastcsv.rl"
 	{
     d->start = p;
 
@@ -1053,12 +1179,12 @@ st6:
 	if ( ++p == pe )
 		goto _test_eof6;
 case 6:
-#line 1057 "ext/fastcsv/fastcsv.c"
+#line 1183 "ext/fastcsv/fastcsv.c"
 	goto tr37;
 tr4:
 #line 1 "NONE"
 	{te = p+1;}
-#line 49 "ext/fastcsv/fastcsv.rl"
+#line 52 "ext/fastcsv/fastcsv.rl"
 	{
     if (p == ts) {
       // Unquoted empty fields are nil, not "", in Ruby.
@@ -1069,7 +1195,7 @@ tr4:
       ENCODE;
     }
   }
-#line 119 "ext/fastcsv/fastcsv.rl"
+#line 97 "ext/fastcsv/fastcsv.rl"
 	{
     mark_row_sep = p;
 
@@ -1078,6 +1204,12 @@ tr4:
     }
     else if (p > d->start) {
       rb_ivar_set(self, s_row, rb_str_new(d->start, p - d->start));
+    }
+
+    if (in_quoted_field) {
+      parse_quoted_field(&field, encoding, quote_char, ts + 1, p - 1);
+      ENCODE;
+      in_quoted_field = false;
     }
 
     if (!NIL_P(field) || RARRAY_LEN(row)) { // same as new_field
@@ -1088,13 +1220,13 @@ tr4:
     rb_yield(row);
     row = rb_ary_new();
   }
-#line 169 "ext/fastcsv/fastcsv.rl"
+#line 153 "ext/fastcsv/fastcsv.rl"
 	{act = 2;}
 	goto st7;
 tr9:
 #line 1 "NONE"
 	{te = p+1;}
-#line 49 "ext/fastcsv/fastcsv.rl"
+#line 52 "ext/fastcsv/fastcsv.rl"
 	{
     if (p == ts) {
       // Unquoted empty fields are nil, not "", in Ruby.
@@ -1105,14 +1237,20 @@ tr9:
       ENCODE;
     }
   }
-#line 95 "ext/fastcsv/fastcsv.rl"
+#line 67 "ext/fastcsv/fastcsv.rl"
 	{
+    if (in_quoted_field) {
+      parse_quoted_field(&field, encoding, quote_char, ts + 1, p - 1);
+      ENCODE;
+      in_quoted_field = false;
+    }
+
     rb_ary_push(row, field);
     field = Qnil;
   }
-#line 168 "ext/fastcsv/fastcsv.rl"
+#line 152 "ext/fastcsv/fastcsv.rl"
 	{act = 1;}
-#line 119 "ext/fastcsv/fastcsv.rl"
+#line 97 "ext/fastcsv/fastcsv.rl"
 	{
     mark_row_sep = p;
 
@@ -1121,6 +1259,12 @@ tr9:
     }
     else if (p > d->start) {
       rb_ivar_set(self, s_row, rb_str_new(d->start, p - d->start));
+    }
+
+    if (in_quoted_field) {
+      parse_quoted_field(&field, encoding, quote_char, ts + 1, p - 1);
+      ENCODE;
+      in_quoted_field = false;
     }
 
     if (!NIL_P(field) || RARRAY_LEN(row)) { // same as new_field
@@ -1135,7 +1279,7 @@ tr9:
 tr14:
 #line 1 "NONE"
 	{te = p+1;}
-#line 119 "ext/fastcsv/fastcsv.rl"
+#line 97 "ext/fastcsv/fastcsv.rl"
 	{
     mark_row_sep = p;
 
@@ -1144,6 +1288,12 @@ tr14:
     }
     else if (p > d->start) {
       rb_ivar_set(self, s_row, rb_str_new(d->start, p - d->start));
+    }
+
+    if (in_quoted_field) {
+      parse_quoted_field(&field, encoding, quote_char, ts + 1, p - 1);
+      ENCODE;
+      in_quoted_field = false;
     }
 
     if (!NIL_P(field) || RARRAY_LEN(row)) { // same as new_field
@@ -1154,20 +1304,26 @@ tr14:
     rb_yield(row);
     row = rb_ary_new();
   }
-#line 169 "ext/fastcsv/fastcsv.rl"
+#line 153 "ext/fastcsv/fastcsv.rl"
 	{act = 2;}
 	goto st7;
 tr21:
 #line 1 "NONE"
 	{te = p+1;}
-#line 95 "ext/fastcsv/fastcsv.rl"
+#line 67 "ext/fastcsv/fastcsv.rl"
 	{
+    if (in_quoted_field) {
+      parse_quoted_field(&field, encoding, quote_char, ts + 1, p - 1);
+      ENCODE;
+      in_quoted_field = false;
+    }
+
     rb_ary_push(row, field);
     field = Qnil;
   }
-#line 168 "ext/fastcsv/fastcsv.rl"
+#line 152 "ext/fastcsv/fastcsv.rl"
 	{act = 1;}
-#line 119 "ext/fastcsv/fastcsv.rl"
+#line 97 "ext/fastcsv/fastcsv.rl"
 	{
     mark_row_sep = p;
 
@@ -1176,6 +1332,12 @@ tr21:
     }
     else if (p > d->start) {
       rb_ivar_set(self, s_row, rb_str_new(d->start, p - d->start));
+    }
+
+    if (in_quoted_field) {
+      parse_quoted_field(&field, encoding, quote_char, ts + 1, p - 1);
+      ENCODE;
+      in_quoted_field = false;
     }
 
     if (!NIL_P(field) || RARRAY_LEN(row)) { // same as new_field
@@ -1190,7 +1352,7 @@ tr21:
 tr47:
 #line 1 "NONE"
 	{te = p+1;}
-#line 119 "ext/fastcsv/fastcsv.rl"
+#line 97 "ext/fastcsv/fastcsv.rl"
 	{
     mark_row_sep = p;
 
@@ -1201,6 +1363,12 @@ tr47:
       rb_ivar_set(self, s_row, rb_str_new(d->start, p - d->start));
     }
 
+    if (in_quoted_field) {
+      parse_quoted_field(&field, encoding, quote_char, ts + 1, p - 1);
+      ENCODE;
+      in_quoted_field = false;
+    }
+
     if (!NIL_P(field) || RARRAY_LEN(row)) { // same as new_field
       rb_ary_push(row, field);
       field = Qnil;
@@ -1209,7 +1377,7 @@ tr47:
     rb_yield(row);
     row = rb_ary_new();
   }
-#line 100 "ext/fastcsv/fastcsv.rl"
+#line 78 "ext/fastcsv/fastcsv.rl"
 	{
     d->start = p;
 
@@ -1228,20 +1396,26 @@ tr47:
 
     curline++;
   }
-#line 169 "ext/fastcsv/fastcsv.rl"
+#line 153 "ext/fastcsv/fastcsv.rl"
 	{act = 2;}
 	goto st7;
 tr54:
 #line 1 "NONE"
 	{te = p+1;}
-#line 95 "ext/fastcsv/fastcsv.rl"
+#line 67 "ext/fastcsv/fastcsv.rl"
 	{
+    if (in_quoted_field) {
+      parse_quoted_field(&field, encoding, quote_char, ts + 1, p - 1);
+      ENCODE;
+      in_quoted_field = false;
+    }
+
     rb_ary_push(row, field);
     field = Qnil;
   }
-#line 168 "ext/fastcsv/fastcsv.rl"
+#line 152 "ext/fastcsv/fastcsv.rl"
 	{act = 1;}
-#line 119 "ext/fastcsv/fastcsv.rl"
+#line 97 "ext/fastcsv/fastcsv.rl"
 	{
     mark_row_sep = p;
 
@@ -1252,6 +1426,12 @@ tr54:
       rb_ivar_set(self, s_row, rb_str_new(d->start, p - d->start));
     }
 
+    if (in_quoted_field) {
+      parse_quoted_field(&field, encoding, quote_char, ts + 1, p - 1);
+      ENCODE;
+      in_quoted_field = false;
+    }
+
     if (!NIL_P(field) || RARRAY_LEN(row)) { // same as new_field
       rb_ary_push(row, field);
       field = Qnil;
@@ -1260,7 +1440,7 @@ tr54:
     rb_yield(row);
     row = rb_ary_new();
   }
-#line 100 "ext/fastcsv/fastcsv.rl"
+#line 78 "ext/fastcsv/fastcsv.rl"
 	{
     d->start = p;
 
@@ -1284,14 +1464,14 @@ st7:
 	if ( ++p == pe )
 		goto _test_eof7;
 case 7:
-#line 1288 "ext/fastcsv/fastcsv.c"
+#line 1468 "ext/fastcsv/fastcsv.c"
 	if ( (*p) == 10 )
 		goto tr38;
 	goto tr37;
 tr27:
 #line 1 "NONE"
 	{te = p+1;}
-#line 49 "ext/fastcsv/fastcsv.rl"
+#line 52 "ext/fastcsv/fastcsv.rl"
 	{
     if (p == ts) {
       // Unquoted empty fields are nil, not "", in Ruby.
@@ -1302,7 +1482,7 @@ tr27:
       ENCODE;
     }
   }
-#line 138 "ext/fastcsv/fastcsv.rl"
+#line 122 "ext/fastcsv/fastcsv.rl"
 	{
     if (d->start == 0 || p == d->start) { // same as new_row
       rb_ivar_set(self, s_row, rb_str_new2(""));
@@ -1319,21 +1499,21 @@ tr27:
       rb_yield(row);
     }
   }
-#line 170 "ext/fastcsv/fastcsv.rl"
+#line 154 "ext/fastcsv/fastcsv.rl"
 	{act = 3;}
 	goto st8;
 st8:
 	if ( ++p == pe )
 		goto _test_eof8;
 case 8:
-#line 1330 "ext/fastcsv/fastcsv.c"
+#line 1510 "ext/fastcsv/fastcsv.c"
 	_widec = (*p);
 	_widec = (short)(1152 + ((*p) - -128));
 	if ( 
-#line 156 "ext/fastcsv/fastcsv.rl"
+#line 140 "ext/fastcsv/fastcsv.rl"
  (*p) == quote_char  ) _widec += 256;
 	if ( 
-#line 157 "ext/fastcsv/fastcsv.rl"
+#line 141 "ext/fastcsv/fastcsv.rl"
  (*p) == col_sep  ) _widec += 512;
 	if ( _widec < 1291 ) {
 		if ( 1152 <= _widec && _widec <= 1289 )
@@ -1345,13 +1525,14 @@ case 8:
 		goto st1;
 	goto tr36;
 tr28:
-#line 41 "ext/fastcsv/fastcsv.rl"
+#line 43 "ext/fastcsv/fastcsv.rl"
 	{
     unclosed_line = curline;
+    in_quoted_field = true;
   }
 	goto st2;
 tr39:
-#line 100 "ext/fastcsv/fastcsv.rl"
+#line 78 "ext/fastcsv/fastcsv.rl"
 	{
     d->start = p;
 
@@ -1375,11 +1556,11 @@ st2:
 	if ( ++p == pe )
 		goto _test_eof2;
 case 2:
-#line 1379 "ext/fastcsv/fastcsv.c"
+#line 1560 "ext/fastcsv/fastcsv.c"
 	_widec = (*p);
 	_widec = (short)(128 + ((*p) - -128));
 	if ( 
-#line 156 "ext/fastcsv/fastcsv.rl"
+#line 140 "ext/fastcsv/fastcsv.rl"
  (*p) == quote_char  ) _widec += 256;
 	if ( _widec < 257 ) {
 		if ( 128 <= _widec && _widec <= 255 )
@@ -1391,87 +1572,25 @@ case 2:
 		goto st2;
 	goto tr0;
 tr11:
-#line 60 "ext/fastcsv/fastcsv.rl"
+#line 63 "ext/fastcsv/fastcsv.rl"
 	{
-    if (p == ts) {
-      field = rb_enc_str_new("", 0, encoding);
-      ENCODE;
-    }
-    // @note If we add an action on '""', we can skip some steps if no '""' is found.
-    else if (p > ts) {
-      // Operating on ts in-place produces odd behavior, FYI.
-      char *copy = ALLOC_N(char, p - ts);
-      memcpy(copy, ts, p - ts);
-
-      char *reader = ts, *writer = copy;
-      int escaped = 0;
-
-      while (p > reader) {
-        if (*reader == quote_char && !escaped) {
-          // Skip the escaping character.
-          escaped = 1;
-        }
-        else {
-          escaped = 0;
-          *writer++ = *reader;
-        }
-        reader++;
-      }
-
-      field = rb_enc_str_new(copy, writer - copy, encoding);
-      ENCODE;
-
-      if (copy != NULL) {
-        free(copy);
-      }
-    }
+    // intentionally blank - see parse_quoted_field
   }
-#line 45 "ext/fastcsv/fastcsv.rl"
+#line 48 "ext/fastcsv/fastcsv.rl"
 	{
     unclosed_line = 0;
   }
 	goto st3;
 tr40:
-#line 60 "ext/fastcsv/fastcsv.rl"
+#line 63 "ext/fastcsv/fastcsv.rl"
 	{
-    if (p == ts) {
-      field = rb_enc_str_new("", 0, encoding);
-      ENCODE;
-    }
-    // @note If we add an action on '""', we can skip some steps if no '""' is found.
-    else if (p > ts) {
-      // Operating on ts in-place produces odd behavior, FYI.
-      char *copy = ALLOC_N(char, p - ts);
-      memcpy(copy, ts, p - ts);
-
-      char *reader = ts, *writer = copy;
-      int escaped = 0;
-
-      while (p > reader) {
-        if (*reader == quote_char && !escaped) {
-          // Skip the escaping character.
-          escaped = 1;
-        }
-        else {
-          escaped = 0;
-          *writer++ = *reader;
-        }
-        reader++;
-      }
-
-      field = rb_enc_str_new(copy, writer - copy, encoding);
-      ENCODE;
-
-      if (copy != NULL) {
-        free(copy);
-      }
-    }
+    // intentionally blank - see parse_quoted_field
   }
-#line 45 "ext/fastcsv/fastcsv.rl"
+#line 48 "ext/fastcsv/fastcsv.rl"
 	{
     unclosed_line = 0;
   }
-#line 100 "ext/fastcsv/fastcsv.rl"
+#line 78 "ext/fastcsv/fastcsv.rl"
 	{
     d->start = p;
 
@@ -1495,14 +1614,14 @@ st3:
 	if ( ++p == pe )
 		goto _test_eof3;
 case 3:
-#line 1499 "ext/fastcsv/fastcsv.c"
+#line 1618 "ext/fastcsv/fastcsv.c"
 	_widec = (*p);
 	_widec = (short)(1152 + ((*p) - -128));
 	if ( 
-#line 156 "ext/fastcsv/fastcsv.rl"
+#line 140 "ext/fastcsv/fastcsv.rl"
  (*p) == quote_char  ) _widec += 256;
 	if ( 
-#line 157 "ext/fastcsv/fastcsv.rl"
+#line 141 "ext/fastcsv/fastcsv.rl"
  (*p) == col_sep  ) _widec += 512;
 	switch( _widec ) {
 		case 1280: goto tr12;
@@ -1530,7 +1649,7 @@ case 3:
 tr15:
 #line 1 "NONE"
 	{te = p+1;}
-#line 138 "ext/fastcsv/fastcsv.rl"
+#line 122 "ext/fastcsv/fastcsv.rl"
 	{
     if (d->start == 0 || p == d->start) { // same as new_row
       rb_ivar_set(self, s_row, rb_str_new2(""));
@@ -1547,31 +1666,43 @@ tr15:
       rb_yield(row);
     }
   }
-#line 170 "ext/fastcsv/fastcsv.rl"
+#line 154 "ext/fastcsv/fastcsv.rl"
 	{act = 3;}
 	goto st9;
 tr22:
 #line 1 "NONE"
 	{te = p+1;}
-#line 95 "ext/fastcsv/fastcsv.rl"
+#line 67 "ext/fastcsv/fastcsv.rl"
 	{
+    if (in_quoted_field) {
+      parse_quoted_field(&field, encoding, quote_char, ts + 1, p - 1);
+      ENCODE;
+      in_quoted_field = false;
+    }
+
     rb_ary_push(row, field);
     field = Qnil;
   }
-#line 168 "ext/fastcsv/fastcsv.rl"
+#line 152 "ext/fastcsv/fastcsv.rl"
 	{act = 1;}
 	goto st9;
 tr23:
 #line 1 "NONE"
 	{te = p+1;}
-#line 95 "ext/fastcsv/fastcsv.rl"
+#line 67 "ext/fastcsv/fastcsv.rl"
 	{
+    if (in_quoted_field) {
+      parse_quoted_field(&field, encoding, quote_char, ts + 1, p - 1);
+      ENCODE;
+      in_quoted_field = false;
+    }
+
     rb_ary_push(row, field);
     field = Qnil;
   }
-#line 168 "ext/fastcsv/fastcsv.rl"
+#line 152 "ext/fastcsv/fastcsv.rl"
 	{act = 1;}
-#line 138 "ext/fastcsv/fastcsv.rl"
+#line 122 "ext/fastcsv/fastcsv.rl"
 	{
     if (d->start == 0 || p == d->start) { // same as new_row
       rb_ivar_set(self, s_row, rb_str_new2(""));
@@ -1592,11 +1723,12 @@ tr23:
 tr29:
 #line 1 "NONE"
 	{te = p+1;}
-#line 41 "ext/fastcsv/fastcsv.rl"
+#line 43 "ext/fastcsv/fastcsv.rl"
 	{
     unclosed_line = curline;
+    in_quoted_field = true;
   }
-#line 49 "ext/fastcsv/fastcsv.rl"
+#line 52 "ext/fastcsv/fastcsv.rl"
 	{
     if (p == ts) {
       // Unquoted empty fields are nil, not "", in Ruby.
@@ -1607,7 +1739,7 @@ tr29:
       ENCODE;
     }
   }
-#line 138 "ext/fastcsv/fastcsv.rl"
+#line 122 "ext/fastcsv/fastcsv.rl"
 	{
     if (d->start == 0 || p == d->start) { // same as new_row
       rb_ivar_set(self, s_row, rb_str_new2(""));
@@ -1624,13 +1756,13 @@ tr29:
       rb_yield(row);
     }
   }
-#line 170 "ext/fastcsv/fastcsv.rl"
+#line 154 "ext/fastcsv/fastcsv.rl"
 	{act = 3;}
 	goto st9;
 tr32:
 #line 1 "NONE"
 	{te = p+1;}
-#line 49 "ext/fastcsv/fastcsv.rl"
+#line 52 "ext/fastcsv/fastcsv.rl"
 	{
     if (p == ts) {
       // Unquoted empty fields are nil, not "", in Ruby.
@@ -1641,22 +1773,29 @@ tr32:
       ENCODE;
     }
   }
-#line 41 "ext/fastcsv/fastcsv.rl"
+#line 43 "ext/fastcsv/fastcsv.rl"
 	{
     unclosed_line = curline;
+    in_quoted_field = true;
   }
-#line 95 "ext/fastcsv/fastcsv.rl"
+#line 67 "ext/fastcsv/fastcsv.rl"
 	{
+    if (in_quoted_field) {
+      parse_quoted_field(&field, encoding, quote_char, ts + 1, p - 1);
+      ENCODE;
+      in_quoted_field = false;
+    }
+
     rb_ary_push(row, field);
     field = Qnil;
   }
-#line 168 "ext/fastcsv/fastcsv.rl"
+#line 152 "ext/fastcsv/fastcsv.rl"
 	{act = 1;}
 	goto st9;
 tr33:
 #line 1 "NONE"
 	{te = p+1;}
-#line 49 "ext/fastcsv/fastcsv.rl"
+#line 52 "ext/fastcsv/fastcsv.rl"
 	{
     if (p == ts) {
       // Unquoted empty fields are nil, not "", in Ruby.
@@ -1667,18 +1806,25 @@ tr33:
       ENCODE;
     }
   }
-#line 41 "ext/fastcsv/fastcsv.rl"
+#line 43 "ext/fastcsv/fastcsv.rl"
 	{
     unclosed_line = curline;
+    in_quoted_field = true;
   }
-#line 95 "ext/fastcsv/fastcsv.rl"
+#line 67 "ext/fastcsv/fastcsv.rl"
 	{
+    if (in_quoted_field) {
+      parse_quoted_field(&field, encoding, quote_char, ts + 1, p - 1);
+      ENCODE;
+      in_quoted_field = false;
+    }
+
     rb_ary_push(row, field);
     field = Qnil;
   }
-#line 168 "ext/fastcsv/fastcsv.rl"
+#line 152 "ext/fastcsv/fastcsv.rl"
 	{act = 1;}
-#line 138 "ext/fastcsv/fastcsv.rl"
+#line 122 "ext/fastcsv/fastcsv.rl"
 	{
     if (d->start == 0 || p == d->start) { // same as new_row
       rb_ivar_set(self, s_row, rb_str_new2(""));
@@ -1699,7 +1845,7 @@ tr33:
 tr48:
 #line 1 "NONE"
 	{te = p+1;}
-#line 100 "ext/fastcsv/fastcsv.rl"
+#line 78 "ext/fastcsv/fastcsv.rl"
 	{
     d->start = p;
 
@@ -1718,7 +1864,7 @@ tr48:
 
     curline++;
   }
-#line 138 "ext/fastcsv/fastcsv.rl"
+#line 122 "ext/fastcsv/fastcsv.rl"
 	{
     if (d->start == 0 || p == d->start) { // same as new_row
       rb_ivar_set(self, s_row, rb_str_new2(""));
@@ -1735,20 +1881,26 @@ tr48:
       rb_yield(row);
     }
   }
-#line 170 "ext/fastcsv/fastcsv.rl"
+#line 154 "ext/fastcsv/fastcsv.rl"
 	{act = 3;}
 	goto st9;
 tr55:
 #line 1 "NONE"
 	{te = p+1;}
-#line 95 "ext/fastcsv/fastcsv.rl"
+#line 67 "ext/fastcsv/fastcsv.rl"
 	{
+    if (in_quoted_field) {
+      parse_quoted_field(&field, encoding, quote_char, ts + 1, p - 1);
+      ENCODE;
+      in_quoted_field = false;
+    }
+
     rb_ary_push(row, field);
     field = Qnil;
   }
-#line 168 "ext/fastcsv/fastcsv.rl"
+#line 152 "ext/fastcsv/fastcsv.rl"
 	{act = 1;}
-#line 100 "ext/fastcsv/fastcsv.rl"
+#line 78 "ext/fastcsv/fastcsv.rl"
 	{
     d->start = p;
 
@@ -1771,14 +1923,20 @@ tr55:
 tr56:
 #line 1 "NONE"
 	{te = p+1;}
-#line 95 "ext/fastcsv/fastcsv.rl"
+#line 67 "ext/fastcsv/fastcsv.rl"
 	{
+    if (in_quoted_field) {
+      parse_quoted_field(&field, encoding, quote_char, ts + 1, p - 1);
+      ENCODE;
+      in_quoted_field = false;
+    }
+
     rb_ary_push(row, field);
     field = Qnil;
   }
-#line 168 "ext/fastcsv/fastcsv.rl"
+#line 152 "ext/fastcsv/fastcsv.rl"
 	{act = 1;}
-#line 100 "ext/fastcsv/fastcsv.rl"
+#line 78 "ext/fastcsv/fastcsv.rl"
 	{
     d->start = p;
 
@@ -1797,7 +1955,7 @@ tr56:
 
     curline++;
   }
-#line 138 "ext/fastcsv/fastcsv.rl"
+#line 122 "ext/fastcsv/fastcsv.rl"
 	{
     if (d->start == 0 || p == d->start) { // same as new_row
       rb_ivar_set(self, s_row, rb_str_new2(""));
@@ -1819,11 +1977,11 @@ st9:
 	if ( ++p == pe )
 		goto _test_eof9;
 case 9:
-#line 1823 "ext/fastcsv/fastcsv.c"
+#line 1981 "ext/fastcsv/fastcsv.c"
 	_widec = (*p);
 	_widec = (short)(128 + ((*p) - -128));
 	if ( 
-#line 156 "ext/fastcsv/fastcsv.rl"
+#line 140 "ext/fastcsv/fastcsv.rl"
  (*p) == quote_char  ) _widec += 256;
 	if ( _widec < 257 ) {
 		if ( 128 <= _widec && _widec <= 255 )
@@ -1837,7 +1995,7 @@ case 9:
 tr16:
 #line 1 "NONE"
 	{te = p+1;}
-#line 119 "ext/fastcsv/fastcsv.rl"
+#line 97 "ext/fastcsv/fastcsv.rl"
 	{
     mark_row_sep = p;
 
@@ -1846,6 +2004,12 @@ tr16:
     }
     else if (p > d->start) {
       rb_ivar_set(self, s_row, rb_str_new(d->start, p - d->start));
+    }
+
+    if (in_quoted_field) {
+      parse_quoted_field(&field, encoding, quote_char, ts + 1, p - 1);
+      ENCODE;
+      in_quoted_field = false;
     }
 
     if (!NIL_P(field) || RARRAY_LEN(row)) { // same as new_field
@@ -1856,20 +2020,26 @@ tr16:
     rb_yield(row);
     row = rb_ary_new();
   }
-#line 169 "ext/fastcsv/fastcsv.rl"
+#line 153 "ext/fastcsv/fastcsv.rl"
 	{act = 2;}
 	goto st10;
 tr24:
 #line 1 "NONE"
 	{te = p+1;}
-#line 95 "ext/fastcsv/fastcsv.rl"
+#line 67 "ext/fastcsv/fastcsv.rl"
 	{
+    if (in_quoted_field) {
+      parse_quoted_field(&field, encoding, quote_char, ts + 1, p - 1);
+      ENCODE;
+      in_quoted_field = false;
+    }
+
     rb_ary_push(row, field);
     field = Qnil;
   }
-#line 168 "ext/fastcsv/fastcsv.rl"
+#line 152 "ext/fastcsv/fastcsv.rl"
 	{act = 1;}
-#line 119 "ext/fastcsv/fastcsv.rl"
+#line 97 "ext/fastcsv/fastcsv.rl"
 	{
     mark_row_sep = p;
 
@@ -1878,6 +2048,12 @@ tr24:
     }
     else if (p > d->start) {
       rb_ivar_set(self, s_row, rb_str_new(d->start, p - d->start));
+    }
+
+    if (in_quoted_field) {
+      parse_quoted_field(&field, encoding, quote_char, ts + 1, p - 1);
+      ENCODE;
+      in_quoted_field = false;
     }
 
     if (!NIL_P(field) || RARRAY_LEN(row)) { // same as new_field
@@ -1892,11 +2068,12 @@ tr24:
 tr30:
 #line 1 "NONE"
 	{te = p+1;}
-#line 41 "ext/fastcsv/fastcsv.rl"
+#line 43 "ext/fastcsv/fastcsv.rl"
 	{
     unclosed_line = curline;
+    in_quoted_field = true;
   }
-#line 49 "ext/fastcsv/fastcsv.rl"
+#line 52 "ext/fastcsv/fastcsv.rl"
 	{
     if (p == ts) {
       // Unquoted empty fields are nil, not "", in Ruby.
@@ -1907,7 +2084,7 @@ tr30:
       ENCODE;
     }
   }
-#line 119 "ext/fastcsv/fastcsv.rl"
+#line 97 "ext/fastcsv/fastcsv.rl"
 	{
     mark_row_sep = p;
 
@@ -1916,6 +2093,12 @@ tr30:
     }
     else if (p > d->start) {
       rb_ivar_set(self, s_row, rb_str_new(d->start, p - d->start));
+    }
+
+    if (in_quoted_field) {
+      parse_quoted_field(&field, encoding, quote_char, ts + 1, p - 1);
+      ENCODE;
+      in_quoted_field = false;
     }
 
     if (!NIL_P(field) || RARRAY_LEN(row)) { // same as new_field
@@ -1926,13 +2109,13 @@ tr30:
     rb_yield(row);
     row = rb_ary_new();
   }
-#line 169 "ext/fastcsv/fastcsv.rl"
+#line 153 "ext/fastcsv/fastcsv.rl"
 	{act = 2;}
 	goto st10;
 tr34:
 #line 1 "NONE"
 	{te = p+1;}
-#line 49 "ext/fastcsv/fastcsv.rl"
+#line 52 "ext/fastcsv/fastcsv.rl"
 	{
     if (p == ts) {
       // Unquoted empty fields are nil, not "", in Ruby.
@@ -1943,18 +2126,25 @@ tr34:
       ENCODE;
     }
   }
-#line 41 "ext/fastcsv/fastcsv.rl"
+#line 43 "ext/fastcsv/fastcsv.rl"
 	{
     unclosed_line = curline;
+    in_quoted_field = true;
   }
-#line 95 "ext/fastcsv/fastcsv.rl"
+#line 67 "ext/fastcsv/fastcsv.rl"
 	{
+    if (in_quoted_field) {
+      parse_quoted_field(&field, encoding, quote_char, ts + 1, p - 1);
+      ENCODE;
+      in_quoted_field = false;
+    }
+
     rb_ary_push(row, field);
     field = Qnil;
   }
-#line 168 "ext/fastcsv/fastcsv.rl"
+#line 152 "ext/fastcsv/fastcsv.rl"
 	{act = 1;}
-#line 119 "ext/fastcsv/fastcsv.rl"
+#line 97 "ext/fastcsv/fastcsv.rl"
 	{
     mark_row_sep = p;
 
@@ -1963,6 +2153,12 @@ tr34:
     }
     else if (p > d->start) {
       rb_ivar_set(self, s_row, rb_str_new(d->start, p - d->start));
+    }
+
+    if (in_quoted_field) {
+      parse_quoted_field(&field, encoding, quote_char, ts + 1, p - 1);
+      ENCODE;
+      in_quoted_field = false;
     }
 
     if (!NIL_P(field) || RARRAY_LEN(row)) { // same as new_field
@@ -1977,7 +2173,7 @@ tr34:
 tr41:
 #line 1 "NONE"
 	{te = p+1;}
-#line 100 "ext/fastcsv/fastcsv.rl"
+#line 78 "ext/fastcsv/fastcsv.rl"
 	{
     d->start = p;
 
@@ -1996,13 +2192,13 @@ tr41:
 
     curline++;
   }
-#line 169 "ext/fastcsv/fastcsv.rl"
+#line 153 "ext/fastcsv/fastcsv.rl"
 	{act = 2;}
 	goto st10;
 tr49:
 #line 1 "NONE"
 	{te = p+1;}
-#line 119 "ext/fastcsv/fastcsv.rl"
+#line 97 "ext/fastcsv/fastcsv.rl"
 	{
     mark_row_sep = p;
 
@@ -2013,6 +2209,12 @@ tr49:
       rb_ivar_set(self, s_row, rb_str_new(d->start, p - d->start));
     }
 
+    if (in_quoted_field) {
+      parse_quoted_field(&field, encoding, quote_char, ts + 1, p - 1);
+      ENCODE;
+      in_quoted_field = false;
+    }
+
     if (!NIL_P(field) || RARRAY_LEN(row)) { // same as new_field
       rb_ary_push(row, field);
       field = Qnil;
@@ -2021,7 +2223,7 @@ tr49:
     rb_yield(row);
     row = rb_ary_new();
   }
-#line 100 "ext/fastcsv/fastcsv.rl"
+#line 78 "ext/fastcsv/fastcsv.rl"
 	{
     d->start = p;
 
@@ -2040,20 +2242,26 @@ tr49:
 
     curline++;
   }
-#line 169 "ext/fastcsv/fastcsv.rl"
+#line 153 "ext/fastcsv/fastcsv.rl"
 	{act = 2;}
 	goto st10;
 tr57:
 #line 1 "NONE"
 	{te = p+1;}
-#line 95 "ext/fastcsv/fastcsv.rl"
+#line 67 "ext/fastcsv/fastcsv.rl"
 	{
+    if (in_quoted_field) {
+      parse_quoted_field(&field, encoding, quote_char, ts + 1, p - 1);
+      ENCODE;
+      in_quoted_field = false;
+    }
+
     rb_ary_push(row, field);
     field = Qnil;
   }
-#line 168 "ext/fastcsv/fastcsv.rl"
+#line 152 "ext/fastcsv/fastcsv.rl"
 	{act = 1;}
-#line 119 "ext/fastcsv/fastcsv.rl"
+#line 97 "ext/fastcsv/fastcsv.rl"
 	{
     mark_row_sep = p;
 
@@ -2064,6 +2272,12 @@ tr57:
       rb_ivar_set(self, s_row, rb_str_new(d->start, p - d->start));
     }
 
+    if (in_quoted_field) {
+      parse_quoted_field(&field, encoding, quote_char, ts + 1, p - 1);
+      ENCODE;
+      in_quoted_field = false;
+    }
+
     if (!NIL_P(field) || RARRAY_LEN(row)) { // same as new_field
       rb_ary_push(row, field);
       field = Qnil;
@@ -2072,7 +2286,7 @@ tr57:
     rb_yield(row);
     row = rb_ary_new();
   }
-#line 100 "ext/fastcsv/fastcsv.rl"
+#line 78 "ext/fastcsv/fastcsv.rl"
 	{
     d->start = p;
 
@@ -2096,24 +2310,24 @@ st10:
 	if ( ++p == pe )
 		goto _test_eof10;
 case 10:
-#line 2100 "ext/fastcsv/fastcsv.c"
+#line 2314 "ext/fastcsv/fastcsv.c"
 	_widec = (*p);
 	_widec = (short)(128 + ((*p) - -128));
 	if ( 
-#line 156 "ext/fastcsv/fastcsv.rl"
+#line 140 "ext/fastcsv/fastcsv.rl"
  (*p) == quote_char  ) _widec += 256;
 	if ( _widec == 256 )
 		goto tr37;
-	if ( _widec > 383 ) {
-		if ( 384 <= _widec && _widec <= 639 )
-			goto tr40;
-	} else if ( _widec >= 128 )
-		goto tr39;
-	goto tr0;
+	if ( _widec > 127 ) {
+		if ( 128 <= _widec && _widec <= 383 )
+			goto tr39;
+	} else
+		goto tr0;
+	goto tr40;
 tr17:
 #line 1 "NONE"
 	{te = p+1;}
-#line 119 "ext/fastcsv/fastcsv.rl"
+#line 97 "ext/fastcsv/fastcsv.rl"
 	{
     mark_row_sep = p;
 
@@ -2122,6 +2336,12 @@ tr17:
     }
     else if (p > d->start) {
       rb_ivar_set(self, s_row, rb_str_new(d->start, p - d->start));
+    }
+
+    if (in_quoted_field) {
+      parse_quoted_field(&field, encoding, quote_char, ts + 1, p - 1);
+      ENCODE;
+      in_quoted_field = false;
     }
 
     if (!NIL_P(field) || RARRAY_LEN(row)) { // same as new_field
@@ -2132,20 +2352,26 @@ tr17:
     rb_yield(row);
     row = rb_ary_new();
   }
-#line 169 "ext/fastcsv/fastcsv.rl"
+#line 153 "ext/fastcsv/fastcsv.rl"
 	{act = 2;}
 	goto st11;
 tr25:
 #line 1 "NONE"
 	{te = p+1;}
-#line 95 "ext/fastcsv/fastcsv.rl"
+#line 67 "ext/fastcsv/fastcsv.rl"
 	{
+    if (in_quoted_field) {
+      parse_quoted_field(&field, encoding, quote_char, ts + 1, p - 1);
+      ENCODE;
+      in_quoted_field = false;
+    }
+
     rb_ary_push(row, field);
     field = Qnil;
   }
-#line 168 "ext/fastcsv/fastcsv.rl"
+#line 152 "ext/fastcsv/fastcsv.rl"
 	{act = 1;}
-#line 119 "ext/fastcsv/fastcsv.rl"
+#line 97 "ext/fastcsv/fastcsv.rl"
 	{
     mark_row_sep = p;
 
@@ -2154,6 +2380,12 @@ tr25:
     }
     else if (p > d->start) {
       rb_ivar_set(self, s_row, rb_str_new(d->start, p - d->start));
+    }
+
+    if (in_quoted_field) {
+      parse_quoted_field(&field, encoding, quote_char, ts + 1, p - 1);
+      ENCODE;
+      in_quoted_field = false;
     }
 
     if (!NIL_P(field) || RARRAY_LEN(row)) { // same as new_field
@@ -2168,11 +2400,12 @@ tr25:
 tr31:
 #line 1 "NONE"
 	{te = p+1;}
-#line 41 "ext/fastcsv/fastcsv.rl"
+#line 43 "ext/fastcsv/fastcsv.rl"
 	{
     unclosed_line = curline;
+    in_quoted_field = true;
   }
-#line 49 "ext/fastcsv/fastcsv.rl"
+#line 52 "ext/fastcsv/fastcsv.rl"
 	{
     if (p == ts) {
       // Unquoted empty fields are nil, not "", in Ruby.
@@ -2183,7 +2416,7 @@ tr31:
       ENCODE;
     }
   }
-#line 119 "ext/fastcsv/fastcsv.rl"
+#line 97 "ext/fastcsv/fastcsv.rl"
 	{
     mark_row_sep = p;
 
@@ -2192,6 +2425,12 @@ tr31:
     }
     else if (p > d->start) {
       rb_ivar_set(self, s_row, rb_str_new(d->start, p - d->start));
+    }
+
+    if (in_quoted_field) {
+      parse_quoted_field(&field, encoding, quote_char, ts + 1, p - 1);
+      ENCODE;
+      in_quoted_field = false;
     }
 
     if (!NIL_P(field) || RARRAY_LEN(row)) { // same as new_field
@@ -2202,13 +2441,13 @@ tr31:
     rb_yield(row);
     row = rb_ary_new();
   }
-#line 169 "ext/fastcsv/fastcsv.rl"
+#line 153 "ext/fastcsv/fastcsv.rl"
 	{act = 2;}
 	goto st11;
 tr35:
 #line 1 "NONE"
 	{te = p+1;}
-#line 49 "ext/fastcsv/fastcsv.rl"
+#line 52 "ext/fastcsv/fastcsv.rl"
 	{
     if (p == ts) {
       // Unquoted empty fields are nil, not "", in Ruby.
@@ -2219,18 +2458,25 @@ tr35:
       ENCODE;
     }
   }
-#line 41 "ext/fastcsv/fastcsv.rl"
+#line 43 "ext/fastcsv/fastcsv.rl"
 	{
     unclosed_line = curline;
+    in_quoted_field = true;
   }
-#line 95 "ext/fastcsv/fastcsv.rl"
+#line 67 "ext/fastcsv/fastcsv.rl"
 	{
+    if (in_quoted_field) {
+      parse_quoted_field(&field, encoding, quote_char, ts + 1, p - 1);
+      ENCODE;
+      in_quoted_field = false;
+    }
+
     rb_ary_push(row, field);
     field = Qnil;
   }
-#line 168 "ext/fastcsv/fastcsv.rl"
+#line 152 "ext/fastcsv/fastcsv.rl"
 	{act = 1;}
-#line 119 "ext/fastcsv/fastcsv.rl"
+#line 97 "ext/fastcsv/fastcsv.rl"
 	{
     mark_row_sep = p;
 
@@ -2239,6 +2485,12 @@ tr35:
     }
     else if (p > d->start) {
       rb_ivar_set(self, s_row, rb_str_new(d->start, p - d->start));
+    }
+
+    if (in_quoted_field) {
+      parse_quoted_field(&field, encoding, quote_char, ts + 1, p - 1);
+      ENCODE;
+      in_quoted_field = false;
     }
 
     if (!NIL_P(field) || RARRAY_LEN(row)) { // same as new_field
@@ -2253,7 +2505,7 @@ tr35:
 tr50:
 #line 1 "NONE"
 	{te = p+1;}
-#line 119 "ext/fastcsv/fastcsv.rl"
+#line 97 "ext/fastcsv/fastcsv.rl"
 	{
     mark_row_sep = p;
 
@@ -2264,6 +2516,12 @@ tr50:
       rb_ivar_set(self, s_row, rb_str_new(d->start, p - d->start));
     }
 
+    if (in_quoted_field) {
+      parse_quoted_field(&field, encoding, quote_char, ts + 1, p - 1);
+      ENCODE;
+      in_quoted_field = false;
+    }
+
     if (!NIL_P(field) || RARRAY_LEN(row)) { // same as new_field
       rb_ary_push(row, field);
       field = Qnil;
@@ -2272,7 +2530,7 @@ tr50:
     rb_yield(row);
     row = rb_ary_new();
   }
-#line 100 "ext/fastcsv/fastcsv.rl"
+#line 78 "ext/fastcsv/fastcsv.rl"
 	{
     d->start = p;
 
@@ -2291,20 +2549,26 @@ tr50:
 
     curline++;
   }
-#line 169 "ext/fastcsv/fastcsv.rl"
+#line 153 "ext/fastcsv/fastcsv.rl"
 	{act = 2;}
 	goto st11;
 tr58:
 #line 1 "NONE"
 	{te = p+1;}
-#line 95 "ext/fastcsv/fastcsv.rl"
+#line 67 "ext/fastcsv/fastcsv.rl"
 	{
+    if (in_quoted_field) {
+      parse_quoted_field(&field, encoding, quote_char, ts + 1, p - 1);
+      ENCODE;
+      in_quoted_field = false;
+    }
+
     rb_ary_push(row, field);
     field = Qnil;
   }
-#line 168 "ext/fastcsv/fastcsv.rl"
+#line 152 "ext/fastcsv/fastcsv.rl"
 	{act = 1;}
-#line 119 "ext/fastcsv/fastcsv.rl"
+#line 97 "ext/fastcsv/fastcsv.rl"
 	{
     mark_row_sep = p;
 
@@ -2315,6 +2579,12 @@ tr58:
       rb_ivar_set(self, s_row, rb_str_new(d->start, p - d->start));
     }
 
+    if (in_quoted_field) {
+      parse_quoted_field(&field, encoding, quote_char, ts + 1, p - 1);
+      ENCODE;
+      in_quoted_field = false;
+    }
+
     if (!NIL_P(field) || RARRAY_LEN(row)) { // same as new_field
       rb_ary_push(row, field);
       field = Qnil;
@@ -2323,7 +2593,7 @@ tr58:
     rb_yield(row);
     row = rb_ary_new();
   }
-#line 100 "ext/fastcsv/fastcsv.rl"
+#line 78 "ext/fastcsv/fastcsv.rl"
 	{
     d->start = p;
 
@@ -2347,11 +2617,11 @@ st11:
 	if ( ++p == pe )
 		goto _test_eof11;
 case 11:
-#line 2351 "ext/fastcsv/fastcsv.c"
+#line 2621 "ext/fastcsv/fastcsv.c"
 	_widec = (*p);
 	_widec = (short)(128 + ((*p) - -128));
 	if ( 
-#line 156 "ext/fastcsv/fastcsv.rl"
+#line 140 "ext/fastcsv/fastcsv.rl"
  (*p) == quote_char  ) _widec += 256;
 	switch( _widec ) {
 		case 256: goto tr37;
@@ -2367,46 +2637,15 @@ case 11:
 tr42:
 #line 1 "NONE"
 	{te = p+1;}
-#line 60 "ext/fastcsv/fastcsv.rl"
+#line 63 "ext/fastcsv/fastcsv.rl"
 	{
-    if (p == ts) {
-      field = rb_enc_str_new("", 0, encoding);
-      ENCODE;
-    }
-    // @note If we add an action on '""', we can skip some steps if no '""' is found.
-    else if (p > ts) {
-      // Operating on ts in-place produces odd behavior, FYI.
-      char *copy = ALLOC_N(char, p - ts);
-      memcpy(copy, ts, p - ts);
-
-      char *reader = ts, *writer = copy;
-      int escaped = 0;
-
-      while (p > reader) {
-        if (*reader == quote_char && !escaped) {
-          // Skip the escaping character.
-          escaped = 1;
-        }
-        else {
-          escaped = 0;
-          *writer++ = *reader;
-        }
-        reader++;
-      }
-
-      field = rb_enc_str_new(copy, writer - copy, encoding);
-      ENCODE;
-
-      if (copy != NULL) {
-        free(copy);
-      }
-    }
+    // intentionally blank - see parse_quoted_field
   }
-#line 45 "ext/fastcsv/fastcsv.rl"
+#line 48 "ext/fastcsv/fastcsv.rl"
 	{
     unclosed_line = 0;
   }
-#line 100 "ext/fastcsv/fastcsv.rl"
+#line 78 "ext/fastcsv/fastcsv.rl"
 	{
     d->start = p;
 
@@ -2425,21 +2664,21 @@ tr42:
 
     curline++;
   }
-#line 169 "ext/fastcsv/fastcsv.rl"
+#line 153 "ext/fastcsv/fastcsv.rl"
 	{act = 2;}
 	goto st12;
 st12:
 	if ( ++p == pe )
 		goto _test_eof12;
 case 12:
-#line 2436 "ext/fastcsv/fastcsv.c"
+#line 2675 "ext/fastcsv/fastcsv.c"
 	_widec = (*p);
 	_widec = (short)(1152 + ((*p) - -128));
 	if ( 
-#line 156 "ext/fastcsv/fastcsv.rl"
+#line 140 "ext/fastcsv/fastcsv.rl"
  (*p) == quote_char  ) _widec += 256;
 	if ( 
-#line 157 "ext/fastcsv/fastcsv.rl"
+#line 141 "ext/fastcsv/fastcsv.rl"
  (*p) == col_sep  ) _widec += 512;
 	switch( _widec ) {
 		case 1280: goto tr45;
@@ -2502,7 +2741,7 @@ case 12:
 	_out: {}
 	}
 
-#line 447 "ext/fastcsv/fastcsv.rl"
+#line 465 "ext/fastcsv/fastcsv.rl"
 
     if (done && cs < raw_parse_first_final) {
       if (d->start == 0 || p == d->start) { // same as new_row
