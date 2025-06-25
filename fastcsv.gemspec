@@ -2,7 +2,7 @@
 
 Gem::Specification.new do |s|
   s.name        = "fastcsv"
-  s.version     = '0.0.7'
+  s.version     = '0.0.9'
   s.platform    = Gem::Platform::RUBY
   s.authors     = ["James McKinney"]
   s.homepage    = "https://github.com/jpmckinney/fastcsv"
@@ -14,6 +14,7 @@ Gem::Specification.new do |s|
   s.executables   = `git ls-files -- bin/*`.split("\n").map{ |f| File.basename(f) }
   s.require_paths = ["lib"]
   s.extensions    = ["ext/fastcsv/extconf.rb"]
+  s.required_ruby_version = '< 2.6'
 
   s.add_development_dependency('coveralls')
   s.add_development_dependency('rake')
